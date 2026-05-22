@@ -1,0 +1,10 @@
+# ROS 2 / colcon generated folders
+build/
+install/
+log/
+
+# Editor settings
+.vscode/
+
+# Temporary notes
+prompt.txt
