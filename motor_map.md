@@ -87,3 +87,27 @@
 - Motion command sent: NO
 - Enable command sent: NO
 - Zero position command sent: NO
+
+### Joint5 / RS05 / CAN_ID 5
+
+- Test type: read-only device ID request
+- Interface: can0
+- Bitrate: 1 Mbps
+- Request frame: 0000FD05#0000000000000000
+- Response frame: 000005FE#C86E93C79C90B015
+- Result: OK, motor replied
+- Motion command sent: NO
+- Enable command sent: NO
+- Zero position command sent: NO
+
+### Joint5 / RS05 / CAN_ID 5
+
+- Test type: read-only device ID request
+- Interface: can0
+- Bitrate: 1 Mbps
+- Request frame: 0000FD05#0000000000000000
+- Response frame: 000005FE#C86E93C79C90B015
+- Result: OK, motor replied
+- Motion command sent: NO
+- Enable command sent: NO
+- Zero position command sent: NO
