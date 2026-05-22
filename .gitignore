@@ -8,3 +8,7 @@ log/
 
 # Temporary notes
 prompt.txt
+
+# Python cache
+__pycache__/
+*.pyc
