@@ -30,10 +30,10 @@
 
 | Item | Status | Note |
 |------|--------|------|
-| Ubuntu detects USB-CAN device | TODO | check with lsusb and ip link |
-| can0 exists | TODO | if yes, use SocketCAN |
-| CAN bitrate 1 Mbps configured | TODO | required by RS00 / RS05 |
-| Read motor feedback only | TODO | no motion command |
+| Ubuntu detects USB-CAN device | OK | PEAK System PCAN-USB detected by lsusb |
+| can0 exists | OK | can0 detected as SocketCAN interface |
+| CAN bitrate 1 Mbps configured | OK | can0 configured to 1000000 bitrate |
+| Read motor feedback only | OK | Joint1-Joint7 replied to read-only device ID request |
 | Joint direction verified | TODO | one motor at a time |
 | Zero position verified | TODO | do not set casually |
 | Joint limits verified | TODO | compare URDF / MoveIt / real robot |
