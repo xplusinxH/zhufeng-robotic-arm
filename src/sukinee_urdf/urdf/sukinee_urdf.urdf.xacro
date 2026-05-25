@@ -2,14 +2,19 @@
 
 <robot name="sukinee_urdf" xmlns:xacro="http://www.ros.org/wiki/xacro">
   <xacro:arg name="use_mock_hardware" default="true"/>
-
+  <xacro:arg name="hardware_plugin" default="mock_components/GenericSystem"/>
+  <xacro:arg name="arm_command_interface" default="position"/>
+  <xacro:arg name="gripper_command_interface" default="position"/>
+  <xacro:arg name="include_gz_plugin" default="false"/>
+  <xacro:arg name="controllers_file" default=""/>
+  <xacro:arg name="world_z" default="0.0"/>
   <xacro:include filename="$(find sukinee_urdf)/urdf/sukinee_ros2_control.xacro"/>
   <link name="world"/>
 
   <joint name="world_to_base_link" type="fixed">
     <parent link="world"/>
     <child link="base_link"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <origin xyz="0 0 $(arg world_z)" rpy="0 0 0"/>
   </joint>
   <link
     name="base_link">
@@ -634,5 +639,16 @@
       multiplier="0.025"
       offset="0" />
   </joint>
-    <xacro:sukinee_ros2_control use_mock_hardware="$(arg use_mock_hardware)"/>
+  <xacro:sukinee_ros2_control
+    use_mock_hardware="$(arg use_mock_hardware)"
+    hardware_plugin="$(arg hardware_plugin)"
+    arm_command_interface="$(arg arm_command_interface)"
+    gripper_command_interface="$(arg gripper_command_interface)"/>
+  <xacro:if value="$(arg include_gz_plugin)">
+    <gazebo>
+      <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+        <parameters>$(arg controllers_file)</parameters>
+      </plugin>
+    </gazebo>
+  </xacro:if>
 </robot>
