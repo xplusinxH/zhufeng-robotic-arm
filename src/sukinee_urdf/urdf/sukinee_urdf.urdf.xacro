@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <robot name="sukinee_urdf" xmlns:xacro="http://www.ros.org/wiki/xacro">
   <xacro:arg name="use_mock_hardware" default="true"/>
   <xacro:arg name="hardware_plugin" default="mock_components/GenericSystem"/>
@@ -8,7 +7,9 @@
   <xacro:arg name="include_gz_plugin" default="false"/>
   <xacro:arg name="controllers_file" default=""/>
   <xacro:arg name="world_z" default="0.0"/>
+
   <xacro:include filename="$(find sukinee_urdf)/urdf/sukinee_ros2_control.xacro"/>
+
   <link name="world"/>
 
   <joint name="world_to_base_link" type="fixed">
@@ -20,17 +21,17 @@
     name="base_link">
     <inertial>
       <origin
-        xyz="-9.27159793573523E-05 5.84334903300024E-05 0.0131634742942032"
+        xyz="1.32130893254478E-07 1.0878882315303E-07 0.0145123930882944"
         rpy="0 0 0" />
       <mass
-        value="0.276557659513136" />
+        value="0.258345451540463" />
       <inertia
-        ixx="0.000306944214419235"
-        ixy="-2.62966486226292E-05"
-        ixz="-2.17057678389435E-07"
-        iyy="0.00019619720224458"
-        iyz="-1.11233404518986E-06"
-        izz="0.000381711312546233" />
+        ixx="0.000255695833262824"
+        ixy="-8.50566806153412E-06"
+        ixz="6.25989218367775E-10"
+        iyy="0.000143791450764687"
+        iyz="5.1542362971656E-10"
+        izz="0.0003184122634403" />
     </inertial>
     <visual>
       <origin
@@ -38,7 +39,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://sukinee_urdf/meshes/base_link.STL" />
+          filename="package://sukinee_urdf/meshes/urdf2/base_link.STL" />
       </geometry>
       <material
         name="">
@@ -52,7 +53,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://sukinee_urdf/meshes/base_link.STL" />
+          filename="package://sukinee_urdf/meshes/urdf2/base_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -60,17 +61,17 @@
     name="Link1">
     <inertial>
       <origin
-        xyz="0.00328193566941784 -0.00101264174932876 0.0341645293592959"
+        xyz="-0.00339213548156639 0.000304711073311301 0.034122625208467"
         rpy="0 0 0" />
       <mass
-        value="0.173424729959474" />
+        value="0.173656729959474" />
       <inertia
-        ixx="8.50037683173789E-05"
-        ixy="2.28577329805091E-07"
-        ixz="-7.19620303243764E-07"
-        iyy="7.01795557782873E-05"
-        iyz="-1.21785758387906E-07"
-        izz="8.92996495432085E-05" />
+        ixx="8.56959788246817E-05"
+        ixy="2.57981779041257E-06"
+        ixz="7.14608803543954E-07"
+        iyy="7.07301657377921E-05"
+        iyz="1.19276284474143E-07"
+        izz="9.04237787575582E-05" />
     </inertial>
     <visual>
       <origin
@@ -78,7 +79,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://sukinee_urdf/meshes/Link1.STL" />
+          filename="package://sukinee_urdf/meshes/urdf2/Link1.STL" />
       </geometry>
       <material
         name="">
@@ -92,25 +93,23 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://sukinee_urdf/meshes/Link1.STL" />
+          filename="package://sukinee_urdf/meshes/urdf2/Link1.STL" />
       </geometry>
     </collision>
   </link>
   <joint
     name="Joint1"
-    type="revolute">
+    type="continuous">
     <origin
-      xyz="-4.5606E-05 -0.00029999 0.051399"
+      xyz="0 0 0.0514"
       rpy="0 0 0" />
     <parent
       link="base_link" />
     <child
       link="Link1" />
     <axis
-      xyz="0 0 1" />
+      xyz="0 0 -1" />
     <limit
-      lower="-3.1416"
-      upper="3.1416"
       effort="5"
       velocity="3.14" />
   </joint>
@@ -118,17 +117,17 @@
     name="Link2">
     <inertial>
       <origin
-        xyz="0.163147205394747 0.0077249837082756 -0.0251647837081496"
+        xyz="0.164355934511196 0.0107983189121957 -0.0273278206693135"
         rpy="0 0 0" />
       <mass
-        value="0.49221073789159" />
+        value="0.486273817491279" />
       <inertia
-        ixx="0.00013320567604932"
-        ixy="-1.90333861615628E-05"
-        ixz="-2.02132460329359E-05"
-        iyy="0.00146041125210994"
-        iyz="-3.49082300685114E-07"
-        izz="0.00147443591285137" />
+        ixx="0.000131700208765616"
+        ixy="-3.59955416546668E-05"
+        ixz="-4.49796251556987E-06"
+        iyy="0.00142428639296128"
+        iyz="-7.11032579861893E-07"
+        izz="0.00143980686835948" />
     </inertial>
     <visual>
       <origin
@@ -136,7 +135,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://sukinee_urdf/meshes/Link2.STL" />
+          filename="package://sukinee_urdf/meshes/urdf2/Link2.STL" />
       </geometry>
       <material
         name="">
@@ -150,7 +149,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://sukinee_urdf/meshes/Link2.STL" />
+          filename="package://sukinee_urdf/meshes/urdf2/Link2.STL" />
       </geometry>
     </collision>
   </link>
@@ -158,14 +157,14 @@
     name="Joint2"
     type="revolute">
     <origin
-      xyz="0.0068769 -0.027546 0.042346"
-      rpy="-1.5708 0 3.1416" />
+      xyz="-0.010939 0.025949 0.0425"
+      rpy="-1.5708 -0.00097565 0.16603" />
     <parent
       link="Link1" />
     <child
       link="Link2" />
     <axis
-      xyz="0 0 1" />
+      xyz="0 0 -1" />
     <limit
       lower="-0.79"
       upper="0.79"
@@ -176,17 +175,17 @@
     name="Link3">
     <inertial>
       <origin
-        xyz="-0.123533258510765 -0.0531477412867997 -0.0289818543594236"
+        xyz="-0.129522607900688 -0.0521849921825459 -0.0273613995018329"
         rpy="0 0 0" />
       <mass
-        value="0.342921181307181" />
+        value="0.324306511251341" />
       <inertia
-        ixx="8.97920455274715E-05"
-        ixy="-5.81304856828259E-05"
-        ixz="-1.06742108487144E-05"
-        iyy="0.00076637159477087"
-        iyz="-9.66346038777982E-07"
-        izz="0.00078459383677109" />
+        ixx="8.179700405764E-05"
+        ixy="-4.69997732333903E-05"
+        ixz="1.35034163751212E-06"
+        iyy="0.000731273265167081"
+        iyz="-3.54063317410718E-07"
+        izz="0.00075003040907452" />
     </inertial>
     <visual>
       <origin
@@ -194,7 +193,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://sukinee_urdf/meshes/Link3.STL" />
+          filename="package://sukinee_urdf/meshes/urdf2/Link3.STL" />
       </geometry>
       <material
         name="">
@@ -208,7 +207,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://sukinee_urdf/meshes/Link3.STL" />
+          filename="package://sukinee_urdf/meshes/urdf2/Link3.STL" />
       </geometry>
     </collision>
   </link>
@@ -216,14 +215,14 @@
     name="Joint3"
     type="revolute">
     <origin
-      xyz="0.26443 0.0031418 0.0039907"
+      xyz="0.26636 0.0076666 0"
       rpy="0 0 0" />
     <parent
       link="Link2" />
     <child
       link="Link3" />
     <axis
-      xyz="0 0 1" />
+      xyz="0 0 -1" />
     <limit
       lower="-0.79"
       upper="0.79"
@@ -234,17 +233,17 @@
     name="Link4">
     <inertial>
       <origin
-        xyz="0.0325057327109481 0.0348518868836431 -0.0264977574735537"
+        xyz="-0.0338567228905684 -0.0377615700439491 -0.0271938522907798"
         rpy="0 0 0" />
       <mass
-        value="0.0535059280721223" />
+        value="0.058588375547201" />
       <inertia
-        ixx="3.35516541099526E-05"
-        ixy="-9.36823847263875E-06"
-        ixz="-1.44258751379024E-07"
-        iyy="4.45006403501621E-05"
-        iyz="9.87407338332834E-08"
-        izz="3.33930480114162E-05" />
+        ixx="3.47939295698438E-05"
+        ixy="-9.83781789279702E-06"
+        ixz="8.18793872056976E-08"
+        iyy="4.43014363876168E-05"
+        iyz="1.11539635337878E-07"
+        izz="3.36963199084079E-05" />
     </inertial>
     <visual>
       <origin
@@ -252,7 +251,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://sukinee_urdf/meshes/Link4.STL" />
+          filename="package://sukinee_urdf/meshes/urdf2/Link4.STL" />
       </geometry>
       <material
         name="">
@@ -266,7 +265,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://sukinee_urdf/meshes/Link4.STL" />
+          filename="package://sukinee_urdf/meshes/urdf2/Link4.STL" />
       </geometry>
     </collision>
   </link>
@@ -274,14 +273,14 @@
     name="Joint4"
     type="revolute">
     <origin
-      xyz="-0.24836 -0.068439 -0.0072675"
-      rpy="0 0 3.1416" />
+      xyz="-0.25125 -0.065507 -0.0039"
+      rpy="0 0 0" />
     <parent
       link="Link3" />
     <child
       link="Link4" />
     <axis
-      xyz="0 0 1" />
+      xyz="0 0 -1" />
     <limit
       lower="-0.79"
       upper="0.79"
@@ -292,17 +291,17 @@
     name="Link5">
     <inertial>
       <origin
-        xyz="-0.0056734168385737 -6.71961845820235E-05 0.0360575266624941"
+        xyz="-0.000134027999521009 0.00371921314809703 0.0379219237691387"
         rpy="0 0 0" />
       <mass
-        value="0.042177959365491" />
+        value="0.0484344180023895" />
       <inertia
-        ixx="1.36297549043679E-05"
-        ixy="-6.35878998308485E-08"
-        ixz="4.27272196782813E-07"
-        iyy="1.20691454899998E-05"
-        iyz="-1.72009298073699E-08"
-        izz="1.47091693168405E-05" />
+        ixx="1.25630144061511E-05"
+        ixy="-5.6639378393227E-08"
+        ixz="2.42191466268887E-08"
+        iyy="1.45689847121451E-05"
+        iyz="-4.17273377359512E-07"
+        izz="1.52122625669006E-05" />
     </inertial>
     <visual>
       <origin
@@ -310,7 +309,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://sukinee_urdf/meshes/Link5.STL" />
+          filename="package://sukinee_urdf/meshes/urdf2/Link5.STL" />
       </geometry>
       <material
         name="">
@@ -324,7 +323,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://sukinee_urdf/meshes/Link5.STL" />
+          filename="package://sukinee_urdf/meshes/urdf2/Link5.STL" />
       </geometry>
     </collision>
   </link>
@@ -332,14 +331,14 @@
     name="Joint5"
     type="revolute">
     <origin
-      xyz="0.061641 0.045136 -0.024175"
-      rpy="1.5708 0 0" />
+      xyz="-0.059809 -0.047874 -0.0245"
+      rpy="1.5708 -1.448 -3.0944" />
     <parent
       link="Link4" />
     <child
       link="Link5" />
     <axis
-      xyz="0 0 1" />
+      xyz="0 0 -1" />
     <limit
       lower="-0.79"
       upper="0.79"
@@ -350,17 +349,17 @@
     name="Link6">
     <inertial>
       <origin
-        xyz="0.00554378475155647 -0.0150082526027543 0.0428267890047218"
+        xyz="0.00409063342879451 -0.00996067616063645 0.0520352103433763"
         rpy="0 0 0" />
       <mass
-        value="0.10618748414872" />
+        value="0.159442082245761" />
       <inertia
-        ixx="3.01056257940198E-05"
-        ixy="-3.61927922989586E-05"
-        ixz="-1.26983678010513E-06"
-        iyy="9.61417818647484E-05"
-        iyz="-1.31809647850692E-06"
-        izz="0.000117560025307442" />
+        ixx="3.47012582789967E-05"
+        ixy="-4.54172618430741E-05"
+        ixz="5.33673918445066E-08"
+        iyy="0.000118901432832412"
+        iyz="-7.69611955935196E-07"
+        izz="0.000144711425342682" />
     </inertial>
     <visual>
       <origin
@@ -368,7 +367,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://sukinee_urdf/meshes/Link6.STL" />
+          filename="package://sukinee_urdf/meshes/urdf2/Link6.STL" />
       </geometry>
       <material
         name="">
@@ -382,25 +381,23 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://sukinee_urdf/meshes/Link6.STL" />
+          filename="package://sukinee_urdf/meshes/urdf2/Link6.STL" />
       </geometry>
     </collision>
   </link>
   <joint
     name="Joint6"
-    type="revolute">
+    type="continuous">
     <origin
-      xyz="0.019993 -0.00056516 0.044999"
-      rpy="1.5708 0 1.5708" />
+      xyz="0.00093628 -0.019978 0.045"
+      rpy="1.5708 0.0022273 0.046831" />
     <parent
       link="Link5" />
     <child
       link="Link6" />
     <axis
-      xyz="0 0 1" />
+      xyz="0 0 -1" />
     <limit
-      lower="-3.1416"
-      upper="3.1416"
       effort="1.6"
       velocity="3.14" />
   </joint>
@@ -408,17 +405,17 @@
     name="Link8">
     <inertial>
       <origin
-        xyz="5.85779128040032E-06 1.2548200144985E-05 -0.000913384881462739"
+        xyz="-0.000276263405831388 -0.000144540158330542 0.00302878393276532"
         rpy="0 0 0" />
       <mass
-        value="0.0685515728356248" />
+        value="0.0196144070602556" />
       <inertia
-        ixx="6.30938201003045E-05"
-        ixy="-1.29294803104063E-06"
-        ixz="-1.94225120141591E-08"
-        iyy="6.15063978466288E-07"
-        iyz="-8.70188873709462E-07"
-        izz="6.33405513208031E-05" />
+        ixx="6.35208081708408E-06"
+        ixy="-1.31306773576557E-05"
+        ixz="-3.35673793713414E-06"
+        iyy="3.04481945113474E-05"
+        iyz="-1.47615179991108E-06"
+        izz="3.59067618181208E-05" />
     </inertial>
     <visual>
       <origin
@@ -426,118 +423,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://sukinee_urdf/meshes/Link8.STL" />
-      </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.647058823529412 0.619607843137255 0.588235294117647 1" />
-      </material>
-    </visual>
-    <collision>
-      <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
-      <geometry>
-        <mesh
-          filename="package://sukinee_urdf/meshes/Link8.STL" />
-      </geometry>
-    </collision>
-  </link>
-  <joint
-    name="Joint8"
-    type="fixed">
-    <origin
-      xyz="-0.0011196 0.00014947 0.074992"
-      rpy="0 0 -1.1345" />
-    <parent
-      link="Link6" />
-    <child
-      link="Link8" />
-    <axis
-      xyz="0 0 0" />
-  </joint>
-  <link
-    name="Link7">
-    <inertial>
-      <origin
-        xyz="-8.68739260867571E-05 3.67829469383185E-08 0.00572996261787687"
-        rpy="0 0 0" />
-      <mass
-        value="0.0056954950921208" />
-      <inertia
-        ixx="4.10624607722094E-07"
-        ixy="-3.13422376163062E-14"
-        ixz="-4.88242668047372E-09"
-        iyy="4.10550583591966E-07"
-        iyz="2.06724684264108E-12"
-        izz="7.32581872233262E-07" />
-    </inertial>
-    <visual>
-      <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
-      <geometry>
-        <mesh
-          filename="package://sukinee_urdf/meshes/Link7.STL" />
-      </geometry>
-      <material
-        name="">
-        <color
-          rgba="1 1 1 1" />
-      </material>
-    </visual>
-    <collision>
-      <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
-      <geometry>
-        <mesh
-          filename="package://sukinee_urdf/meshes/Link7.STL" />
-      </geometry>
-    </collision>
-  </link>
-  <joint
-    name="Joint7"
-    type="revolute">
-    <origin
-      xyz="0.00010901 0.00023352 -0.016998"
-      rpy="0 0 1.1345" />
-    <parent
-      link="Link8" />
-    <child
-      link="Link7" />
-    <axis
-      xyz="0 0 1" />
-    <limit
-      lower="-1.5"
-      upper="0"
-      effort="1.6"
-      velocity="3.14" />
-  </joint>
-  <link
-    name="Link9">
-    <inertial>
-      <origin
-        xyz="-0.0243860514000653 0.000940994416315399 0.0968274848139791"
-        rpy="0 0 0" />
-      <mass
-        value="0.0514991247749255" />
-      <inertia
-        ixx="8.28736180563144E-06"
-        ixy="-7.26191574978187E-08"
-        ixz="-2.42329844551363E-06"
-        iyy="2.19576619782527E-05"
-        iyz="2.17053480223994E-12"
-        izz="2.34373850902803E-05" />
-    </inertial>
-    <visual>
-      <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
-      <geometry>
-        <mesh
-          filename="package://sukinee_urdf/meshes/Link9.STL" />
+          filename="package://sukinee_urdf/meshes/urdf2/Link8.STL" />
       </geometry>
       <material
         name="">
@@ -551,47 +437,38 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://sukinee_urdf/meshes/Link9.STL" />
+          filename="package://sukinee_urdf/meshes/urdf2/Link8.STL" />
       </geometry>
     </collision>
   </link>
   <joint
-    name="right_finger"
-    type="prismatic">
+    name="Joint8"
+    type="fixed">
     <origin
-      xyz="-0.00090214 -0.041949 0.0075419"
-      rpy="-0.41597 1.5556 1.1345" />
+      xyz="1.7949E-05 0.00014892 0.075"
+      rpy="-0.047686 0.090858 -0.00433" />
     <parent
-      link="Link8" />
+      link="Link6" />
     <child
-      link="Link9" />
+      link="Link8" />
     <axis
-      xyz="0 0 1" />
-    <limit
-      lower="-0.03"
-      upper="0"
-      effort="1"
-      velocity="0.05" />
-    <mimic
-      joint="Joint7"
-      multiplier="0.025"
-      offset="0" />
+      xyz="0 0 0" />
   </joint>
   <link
-    name="Link10">
+    name="Link7">
     <inertial>
       <origin
-        xyz="0.0243860656141254 -0.00109398804918623 0.0968274848182184"
+        xyz="-1.71529457304587E-14 7.24698079324071E-14 0.00566723769356957"
         rpy="0 0 0" />
       <mass
-        value="0.0514991248787955" />
+        value="0.00564266139065291" />
       <inertia
-        ixx="8.28736387357228E-06"
-        ixy="-7.28109951429884E-08"
-        ixz="2.42329844302306E-06"
-        iyy="2.1957659945586E-05"
-        iyz="3.18400441671419E-11"
-        izz="2.34373851160649E-05" />
+        ixx="4.09819853333976E-07"
+        ixy="4.70458973389534E-23"
+        ixz="-2.64697796016969E-23"
+        iyy="4.09819853333976E-07"
+        iyz="2.62759091456298E-23"
+        izz="7.31414576323275E-07" />
     </inertial>
     <visual>
       <origin
@@ -599,7 +476,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://sukinee_urdf/meshes/Link10.STL" />
+          filename="package://sukinee_urdf/meshes/urdf2/Link7.STL" />
       </geometry>
       <material
         name="">
@@ -613,7 +490,127 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://sukinee_urdf/meshes/Link10.STL" />
+          filename="package://sukinee_urdf/meshes/urdf2/Link7.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Joint7"
+    type="revolute">
+    <origin
+      xyz="0.0015425 0.00080701 -0.016911"
+      rpy="0.047489 -0.090961 0" />
+    <parent
+      link="Link8" />
+    <child
+      link="Link7" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="-0.79"
+      upper="0.79"
+      effort="1.6"
+      velocity="3.14" />
+  </joint>
+  <link
+    name="Link9">
+    <inertial>
+      <origin
+        xyz="0.0191331974047889 -6.56666316107835E-05 -0.0130654638273785"
+        rpy="0 0 0" />
+      <mass
+        value="0.0483309612331933" />
+      <inertia
+        ixx="7.79151460694128E-06"
+        ixy="1.62669286704591E-07"
+        ixz="-1.3696775869885E-06"
+        iyy="9.49579838551638E-06"
+        iyz="7.46583427217561E-08"
+        izz="1.10008074782098E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://sukinee_urdf/meshes/urdf2/right_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://sukinee_urdf/meshes/urdf2/right_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_finger"
+    type="prismatic">
+    <origin
+      xyz="0.037374 0.016369 0.012356"
+      rpy="-2.7297 -1.4591 3.1416" />
+    <parent
+      link="Link8" />
+    <child
+      link="Link9" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="0.04"
+      effort="1"
+      velocity="0.03" />
+    <mimic
+      joint="Joint7"
+      multiplier="0.05"
+      offset="0" />
+  </joint>
+  <link
+    name="Link10">
+    <inertial>
+      <origin
+        xyz="-0.0190302729313749 -0.00204981438622404 -0.01306546383017"
+        rpy="0 0 0" />
+      <mass
+        value="0.0483309609625738" />
+      <inertia
+        ixx="7.77627853114591E-06"
+        ixy="-1.62068909762623E-08"
+        ixz="1.37005094636776E-06"
+        iyy="9.51103438216718E-06"
+        iyz="6.74608448600019E-08"
+        izz="1.1000807426751E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://sukinee_urdf/meshes/urdf2/left_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://sukinee_urdf/meshes/urdf2/left_Link.STL" />
       </geometry>
     </collision>
   </link>
@@ -621,8 +618,8 @@
     name="left_finger"
     type="prismatic">
     <origin
-      xyz="0.00079796 0.041726 0.0087023"
-      rpy="-2.7256 -1.5556 -2.0071" />
+      xyz="-0.038848 -0.01714 0.0038046"
+      rpy="-0.41189 1.4591 0" />
     <parent
       link="Link8" />
     <child
@@ -630,13 +627,13 @@
     <axis
       xyz="0 0 1" />
     <limit
-      lower="-0.03"
-      upper="0"
+      lower="0"
+      upper="0.04"
       effort="1"
-      velocity="0.05" />
+      velocity="0.03" />
     <mimic
       joint="Joint7"
-      multiplier="0.025"
+      multiplier="0.05"
       offset="0" />
   </joint>
   <xacro:sukinee_ros2_control
@@ -644,6 +641,7 @@
     hardware_plugin="$(arg hardware_plugin)"
     arm_command_interface="$(arg arm_command_interface)"
     gripper_command_interface="$(arg gripper_command_interface)"/>
+
   <xacro:if value="$(arg include_gz_plugin)">
     <gazebo>
       <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
