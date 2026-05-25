@@ -8,11 +8,13 @@ controller_manager:
     arm_controller:
       type: joint_trajectory_controller/JointTrajectoryController
 
+    gripper_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
 
 
 joint_state_broadcaster:
   ros__parameters:
-    publish_rate: 50.0
+    publish_rate: 60.0
 
 
 arm_controller:
@@ -24,7 +26,6 @@ arm_controller:
       - Joint4
       - Joint5
       - Joint6
-      - Joint7
 
     command_interfaces:
       - position
@@ -51,6 +52,25 @@ arm_controller:
         goal: 0.05
       Joint6:
         goal: 0.05
+
+
+gripper_controller:
+  ros__parameters:
+    joints:
+      - Joint7
+
+    command_interfaces:
+      - position
+
+    state_interfaces:
+      - position
+      - velocity
+
+    open_loop_control: true
+    allow_nonzero_velocity_at_trajectory_end: true
+
+    constraints:
+      goal_time: 1.0
+      stopped_velocity_tolerance: 0.05
       Joint7:
         goal: 0.05
-
