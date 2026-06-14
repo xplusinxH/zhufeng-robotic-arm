@@ -1,47 +1,59 @@
-# Jetson Nano D435 Vision Project
+# Jetson Nano D435 视觉项目
 
-This repository contains the vision-side code for the Jetson Nano + Intel RealSense D435 desktop sorting project.
+本目录包含逐锋机械臂桌面整理项目的视觉端代码。电脑端用于开发和测试，
+Jetson Nano 用于连接 RealSense D435、运行视觉程序和与下位机通信。
 
-The PC is used for editing, tests, and SSH-based development. The Jetson Nano is the real runtime for D435 capture, serial communication, CUDA/TensorRT checks, and deployment.
+## 当前运行环境
 
-## PC Development Environment
+- Jetson Nano B01
+- L4T R32.7.4 / JetPack 4.6.4
+- Python 3.6.9
+- OpenCV 3.2.0
+- librealsense 2.50.0，使用 RSUSB 后端
+- RealSense D435，序列号 `243122071071`
 
-From this folder on Windows:
+## Jetson 存储布局
 
-```powershell
-py -3 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m pytest -v
+eMMC 保存系统、运行库和关键配置：
+
+```text
+/etc/zhufeng-vision/config
+/etc/zhufeng-vision/calibration
 ```
 
-Or run the helper script:
+外部 30 GB 存储已格式化为 ext4，并固定挂载到：
 
-```powershell
-.\scripts\pc_setup_dev.ps1
+```text
+/mnt/zhufeng_data
 ```
 
-Do not install Jetson-specific CUDA, TensorRT, or RealSense system packages on the PC for this project.
+项目运行目录：
 
-## Jetson Runtime Checks
+```text
+/mnt/zhufeng_data/zhufeng/vision_project
+```
 
-Copy or sync this repository to the Jetson project directory, recommended by the master document as:
+## 相机验证
+
+在 Jetson 中运行：
 
 ```bash
-/mnt/sdcard/vision_project
+cd /mnt/zhufeng_data/zhufeng/vision_project
+python3 tools/check_camera.py --frames 30
 ```
 
-Then run:
+程序会采集完成对齐的彩色帧和深度帧，并打印中心点深度。
+
+十分钟稳定性测试：
 
 ```bash
-cd /mnt/sdcard/vision_project
-bash scripts/jetson_check_env.sh
+timeout 600 python3 tools/check_camera.py
 ```
 
-Only after checking the Jetson state, run the lightweight base setup if needed:
+## 开发约束
 
-```bash
-bash scripts/jetson_setup_base.sh
-```
-
-CUDA, PyTorch, TensorRT, and RealSense SDK changes must match L4T R32.7.4 / JetPack 4.6.4.
+- 不升级 JetPack、CUDA、TensorRT 或 Linux 内核。
+- Jetson 代码必须兼容 Python 3.6。
+- 配置和标定结果保存在 eMMC。
+- 项目、模型、日志和实验数据保存在外部 ext4 存储。
+- 后续所有 Markdown 文档使用中文。
