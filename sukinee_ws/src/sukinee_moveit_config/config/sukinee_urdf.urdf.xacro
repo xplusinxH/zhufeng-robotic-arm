@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="sukinee_urdf">
+
+
+  <xacro:include filename="$(find sukinee_urdf)/urdf/sukinee_urdf.urdf.xacro" />
+
+</robot>

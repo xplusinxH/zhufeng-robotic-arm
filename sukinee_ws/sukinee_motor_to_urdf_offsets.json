@@ -1,0 +1,45 @@
+{
+  "description": "Software-only motor feedback position to URDF joint angle calibration. This does not set motor zero and does not change motor parameters.",
+  "formula": "q_urdf[j] = sign[j] * (motor_pos[j] - motor_pos_at_urdf_zero[j])",
+  "joint_order": [
+    "Joint1",
+    "Joint2",
+    "Joint3",
+    "Joint4",
+    "Joint5",
+    "Joint6"
+  ],
+  "motor_to_urdf_sign": {
+    "Joint1": 1.0,
+    "Joint2": -1.0,
+    "Joint3": 1.0,
+    "Joint4": 1.0,
+    "Joint5": 1.0,
+    "Joint6": 1.0
+  },
+  "calibrated_motor_pos": {
+    "Joint1": 4.912995338439941,
+    "Joint2": 6.166296005249023,
+    "Joint3": 2.3391292095184326,
+    "Joint4": 1.1148567199707031,
+    "Joint5": 3.0190227031707764,
+    "Joint6": 3.3239378929138184
+  },
+  "q_init_urdf": {
+    "Joint1": 0.236247768,
+    "Joint2": -0.12716,
+    "Joint3": 0.080816,
+    "Joint4": 0.03376,
+    "Joint5": 0.0,
+    "Joint6": 0.42084
+  },
+  "motor_pos_at_urdf_zero": {
+    "Joint1": 4.676747570439941,
+    "Joint2": 6.0391360052490235,
+    "Joint3": 2.2583132095184326,
+    "Joint4": 1.0810967199707031,
+    "Joint5": 3.0190227031707764,
+    "Joint6": 2.9030978929138183
+  },
+  "created_at_unix_time": 1781186917.9437928
+}

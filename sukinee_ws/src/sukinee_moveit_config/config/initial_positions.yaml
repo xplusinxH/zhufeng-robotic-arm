@@ -1,0 +1,10 @@
+# Default initial positions for sukinee_urdf's ros2_control fake system
+
+initial_positions:
+  Joint1: 0
+  Joint2: 0
+  Joint3: 0
+  Joint4: 0
+  Joint5: 0
+  Joint6: 0
+  Joint7: 0
