@@ -20,6 +20,49 @@ RSUSB 后端编译，并安装 Python 绑定。仓库中的相机模块负责封
 - 修改 `vision/README.md`：以中文记录 Jetson 安装、构建和验收命令。
 - 修改 `vision/jetson_nano_d435_desktop_sorting_project (5).md`：记录本阶段执行结果。
 
+### 任务 0：初始化存储布局
+
+- [ ] **步骤 1：确认两个存储设备的剩余空间**
+
+```bash
+df -h / /media/jetson/1896-8302
+```
+
+预期：eMMC 可用空间大于 4 GB，外部存储可用空间大于 20 GB。
+
+- [ ] **步骤 2：在 eMMC 创建关键配置目录**
+
+```bash
+sudo mkdir -p /etc/zhufeng-vision/config
+sudo mkdir -p /etc/zhufeng-vision/calibration
+sudo chown -R jetson:jetson /etc/zhufeng-vision
+```
+
+预期：`jetson` 用户能够读写项目配置和标定目录。
+
+- [ ] **步骤 3：在外部存储创建项目工作目录**
+
+```bash
+mkdir -p /media/jetson/1896-8302/zhufeng/vision_project
+mkdir -p /media/jetson/1896-8302/zhufeng/build
+mkdir -p /media/jetson/1896-8302/zhufeng/models
+mkdir -p /media/jetson/1896-8302/zhufeng/logs
+mkdir -p /media/jetson/1896-8302/zhufeng/data
+mkdir -p /media/jetson/1896-8302/zhufeng/tmp
+```
+
+预期：所有目录均创建成功，且位于外部存储。
+
+- [ ] **步骤 4：创建第一版运行配置**
+
+```bash
+cp /media/jetson/1896-8302/zhufeng/vision_project/config.yaml \
+  /etc/zhufeng-vision/config/config.yaml
+```
+
+预期：部署项目后，运行配置位于 eMMC 的 `/etc/zhufeng-vision/config`。
+若项目尚未部署，则在部署完成后执行本步骤。
+
 ### 任务 1：安装基础依赖并验证 OpenCV
 
 - [ ] **步骤 1：更新软件包索引**
@@ -48,18 +91,18 @@ python3 -c "import cv2; print('OpenCV:', cv2.__version__)"
 df -h /
 ```
 
-预期：打印 OpenCV 版本，根文件系统剩余空间大于 3 GB。
+预期：打印 OpenCV 版本，根文件系统剩余空间大于 4 GB。
 
 ### 任务 2：准备 librealsense RSUSB 源码
 
 - [ ] **步骤 1：创建外部存储源码目录**
 
 ```bash
-mkdir -p /media/jetson/1896-8302/src
-cd /media/jetson/1896-8302/src
+mkdir -p /media/jetson/1896-8302/zhufeng/build
+cd /media/jetson/1896-8302/zhufeng/build
 ```
 
-预期：当前目录为 `/media/jetson/1896-8302/src`。
+预期：当前目录为 `/media/jetson/1896-8302/zhufeng/build`。
 
 - [ ] **步骤 2：克隆固定版本源码**
 
@@ -85,7 +128,7 @@ sudo udevadm trigger
 - [ ] **步骤 1：创建构建目录**
 
 ```bash
-cd /media/jetson/1896-8302/src/librealsense
+cd /media/jetson/1896-8302/zhufeng/build/librealsense
 mkdir -p build
 cd build
 ```
@@ -241,13 +284,13 @@ py -3 -m pytest vision/tests -v
 使用 Xshell/Xftp 将 `vision` 目录同步到：
 
 ```text
-/media/jetson/1896-8302/vision_project
+/media/jetson/1896-8302/zhufeng/vision_project
 ```
 
 - [ ] **步骤 4：在 Jetson 运行冒烟测试**
 
 ```bash
-cd /media/jetson/1896-8302/vision_project
+cd /media/jetson/1896-8302/zhufeng/vision_project
 python3 tools/check_camera.py
 ```
 
@@ -258,7 +301,7 @@ python3 tools/check_camera.py
 - [ ] **步骤 1：运行十分钟采集测试**
 
 ```bash
-cd /media/jetson/1896-8302/vision_project
+cd /media/jetson/1896-8302/zhufeng/vision_project
 timeout 600 python3 tools/check_camera.py
 ```
 
@@ -277,7 +320,7 @@ rs-enumerate-devices
 df -h /
 ```
 
-预期：两个 Python 模块可导入、D435 可枚举、根文件系统剩余空间大于 3 GB。
+预期：两个 Python 模块可导入、D435 可枚举、根文件系统剩余空间大于 4 GB。
 
 - [ ] **步骤 4：提交文档**
 
@@ -291,3 +334,4 @@ git commit -m "记录 D435 RSUSB 环境验收结果"
 - 已覆盖设计中的 OpenCV、RSUSB、Python 绑定、设备枚举、RGB-D 对齐和十分钟稳定性验收。
 - 内核补丁、CUDA、TensorRT、PyTorch 和识别算法均明确延后。
 - 所有新增或修改的 Markdown 文档均使用中文。
+- eMMC 仅保存系统、运行库和关键配置；项目工作文件全部保存在外部存储。

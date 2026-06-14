@@ -31,12 +31,36 @@ librealsense，编译配置如下：
 
 ## 存储布局
 
-- librealsense 源码与构建目录：
-  `/media/jetson/1896-8302/src/librealsense`
-- 视觉项目部署目录：
-  `/media/jetson/1896-8302/vision_project`
-- 系统库和 Python 绑定：
-  在成功编译后安装至标准系统路径
+### eMMC：系统与关键配置
+
+eMMC 当前容量约 14 GB，已使用约 5 GB。项目运行期间必须始终保留至少
+4 GB 可用空间。
+
+允许写入 eMMC 的内容：
+
+- Ubuntu、JetPack 和系统软件包。
+- OpenCV、librealsense 运行库及 Python 绑定。
+- udev 规则和后续需要的 systemd 服务文件。
+- 项目运行配置：`/etc/zhufeng-vision/config`。
+- 相机内参、桌面平面和坐标变换等标定结果：
+  `/etc/zhufeng-vision/calibration`。
+
+eMMC 中的项目配置和标定文件总量应控制在 100 MB 内。日志、模型、源码、
+构建产物和测试数据禁止写入 eMMC。
+
+### 外部 30 GB 存储：项目工作盘
+
+外部存储挂载于 `/media/jetson/1896-8302`，目录分配如下：
+
+- 项目源码：`/media/jetson/1896-8302/zhufeng/vision_project`，预算 1 GB。
+- 第三方源码与构建产物：`/media/jetson/1896-8302/zhufeng/build`，预算 8 GB。
+- 模型文件：`/media/jetson/1896-8302/zhufeng/models`，预算 6 GB。
+- 日志：`/media/jetson/1896-8302/zhufeng/logs`，预算 3 GB，后续启用轮转。
+- 测试图像与实验数据：`/media/jetson/1896-8302/zhufeng/data`，预算 8 GB。
+- 临时文件：`/media/jetson/1896-8302/zhufeng/tmp`，预算 2 GB，可随时清理。
+
+至少保留 2 GB 外部存储空闲空间。运行程序通过配置路径读取 eMMC 中的配置和
+标定文件，并将模型、日志和数据路径指向外部存储。
 
 ## 执行阶段
 
@@ -52,7 +76,8 @@ librealsense，编译配置如下：
 ## 异常处理
 
 - 软件包安装出现依赖冲突时立即停止。
-- 根文件系统剩余空间低于 3 GB 时立即停止。
+- 根文件系统剩余空间低于 4 GB 时立即停止。
+- 外部存储未挂载时禁止启动正式视觉程序，避免数据回落到 eMMC。
 - 所有编译产物保存在外部存储中。
 - 使用较低的并行编译数量，降低内存不足风险。
 - 不以内核补丁作为失败后的备用方案。
