@@ -44,7 +44,6 @@ sudo chown -R jetson:jetson /etc/zhufeng-vision
 
 ```bash
 mkdir -p /media/jetson/1896-8302/zhufeng/vision_project
-mkdir -p /media/jetson/1896-8302/zhufeng/build
 mkdir -p /media/jetson/1896-8302/zhufeng/models
 mkdir -p /media/jetson/1896-8302/zhufeng/logs
 mkdir -p /media/jetson/1896-8302/zhufeng/data
@@ -93,16 +92,16 @@ df -h /
 
 预期：打印 OpenCV 版本，根文件系统剩余空间大于 4 GB。
 
-### 任务 2：准备 librealsense RSUSB 源码
+### 任务 2：在 eMMC 临时目录准备 librealsense RSUSB 源码
 
 - [ ] **步骤 1：创建外部存储源码目录**
 
 ```bash
-mkdir -p /media/jetson/1896-8302/zhufeng/build
-cd /media/jetson/1896-8302/zhufeng/build
+mkdir -p /home/jetson/build
+cd /home/jetson/build
 ```
 
-预期：当前目录为 `/media/jetson/1896-8302/zhufeng/build`。
+预期：当前目录为 `/home/jetson/build`。
 
 - [ ] **步骤 2：克隆固定版本源码**
 
@@ -128,7 +127,7 @@ sudo udevadm trigger
 - [ ] **步骤 1：创建构建目录**
 
 ```bash
-cd /media/jetson/1896-8302/zhufeng/build/librealsense
+cd /home/jetson/build/librealsense
 mkdir -p build
 cd build
 ```
@@ -168,13 +167,11 @@ sudo ldconfig
 - [ ] **步骤 5：让 Python 发现绑定**
 
 ```bash
-PYTHON_SITE="$(python3 -c 'import site; print(site.getsitepackages()[0])')"
-RS_PY="$(find /usr/local -name 'pyrealsense2*.so' | head -n 1)"
-echo "$RS_PY"
-sudo ln -sf "$RS_PY" "$PYTHON_SITE/$(basename "$RS_PY")"
+echo '/usr/local/lib/python3.6/pyrealsense2' | \
+  sudo tee /usr/local/lib/python3.6/dist-packages/pyrealsense2.pth
 ```
 
-预期：`RS_PY` 输出实际 `.so` 文件路径，软链接创建成功。
+预期：Python 搜索路径配置创建成功。
 
 ### 任务 4：验证 librealsense 与 D435
 
@@ -329,9 +326,21 @@ git add vision/README.md "vision/jetson_nano_d435_desktop_sorting_project (5).md
 git commit -m "记录 D435 RSUSB 环境验收结果"
 ```
 
+- [ ] **步骤 5：清理 eMMC 临时构建目录**
+
+确认所有验收通过后执行：
+
+```bash
+rm -rf -- /home/jetson/build/librealsense
+df -h /
+```
+
+预期：临时源码和构建产物被删除，根文件系统剩余空间恢复并大于 4 GB。
+
 ## 计划自审
 
 - 已覆盖设计中的 OpenCV、RSUSB、Python 绑定、设备枚举、RGB-D 对齐和十分钟稳定性验收。
 - 内核补丁、CUDA、TensorRT、PyTorch 和识别算法均明确延后。
 - 所有新增或修改的 Markdown 文档均使用中文。
 - eMMC 仅保存系统、运行库和关键配置；项目工作文件全部保存在外部存储。
+- 外部存储为 `vfat`，不用于 Git 仓库或动态库构建；临时构建在 eMMC 完成后清理。
