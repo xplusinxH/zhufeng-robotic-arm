@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot name="sukinee_urdf">
+  <group name="sukinee_arm">
+    <joint name="Joint1"/>
+    <joint name="Joint2"/>
+    <joint name="Joint3"/>
+    <joint name="Joint4"/>
+    <joint name="Joint5"/>
+    <joint name="Joint6"/>
+  </group>
+
+  <group_state name="ready_pose" group="sukinee_arm">
+    <joint name="Joint1" value="0"/>
+    <joint name="Joint2" value="0"/>
+    <joint name="Joint3" value="0"/>
+    <joint name="Joint4" value="0"/>
+    <joint name="Joint5" value="0"/>
+    <joint name="Joint6" value="0"/>
+  </group_state>
+
+  <group name="sukinee_gripper">
+    <joint name="Joint7"/>
+  </group>
+
+  <group_state name="open" group="sukinee_gripper">
+    <joint name="Joint7" value="0.0"/>
+  </group_state>
+
+  <group_state name="close" group="sukinee_gripper">
+    <joint name="Joint7" value="1.57"/>
+  </group_state>
+
+  <disable_collisions link1="base_link" link2="Link1" reason="Adjacent"/>
+  <disable_collisions link1="Link1" link2="Link2" reason="Adjacent"/>
+  <disable_collisions link1="Link2" link2="Link3" reason="Adjacent"/>
+  <disable_collisions link1="Link3" link2="Link4" reason="Adjacent"/>
+  <disable_collisions link1="Link4" link2="Link5" reason="Adjacent"/>
+  <disable_collisions link1="Link5" link2="Link6" reason="Adjacent"/>
+  <disable_collisions link1="Link6" link2="Link8" reason="Adjacent"/>
+  <disable_collisions link1="Link6" link2="Link7" reason="Adjacent"/>
+  <disable_collisions link1="Link6" link2="Link_r" reason="Adjacent"/>
+  <disable_collisions link1="Link6" link2="Link_l" reason="Adjacent"/>
+</robot>

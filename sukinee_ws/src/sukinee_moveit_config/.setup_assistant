@@ -1,0 +1,25 @@
+moveit_setup_assistant_config:
+  urdf:
+    package: sukinee_urdf
+    relative_path: urdf/sukinee_urdf.urdf.xacro
+  srdf:
+    relative_path: config/sukinee_urdf.srdf
+  package_settings:
+    author_name: ""
+    author_email: ""
+    generated_timestamp: 1779342260
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity
+  modified_urdf:
+    xacros:
+      - control_xacro
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity
