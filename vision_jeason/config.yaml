@@ -1,0 +1,30 @@
+camera:
+  width: 640
+  height: 480
+  fps: 30
+  align_depth_to_color: true
+
+depth:
+  min_m: 0.15
+  max_m: 1.20
+  median_kernel: 7
+
+table:
+  min_above_table_m: 0.01
+  max_above_table_m: 0.30
+
+workspace:
+  unit: mm
+  output_transform: se3
+
+serial:
+  port: /dev/ttyUSB0
+  baudrate: 115200
+  bytesize: 8
+  stopbits: 1
+  parity: none
+  encoding: ascii
+
+logging:
+  level: INFO
+  directory: logs
