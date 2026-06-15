@@ -18,6 +18,7 @@ class RealSenseCamera:
         self.fps = fps
         self._rs = rs_module
         self._pipeline = None
+        self._profile = None
         self._align = None
         self._started = False
 
@@ -37,7 +38,7 @@ class RealSenseCamera:
             rs.stream.color, self.width, self.height, rs.format.bgr8, self.fps
         )
         self._align = rs.align(rs.stream.color)
-        self._pipeline.start(config)
+        self._profile = self._pipeline.start(config)
         self._started = True
 
     def capture_aligned(self) -> Tuple[Any, Any]:
@@ -58,6 +59,48 @@ class RealSenseCamera:
         if self._started:
             self._pipeline.stop()
             self._started = False
+
+    def get_color_intrinsics(self) -> Any:
+        """返回当前彩色流内参。"""
+        self._require_started()
+        return (
+            self._profile.get_stream(self._rs.stream.color)
+            .as_video_stream_profile()
+            .get_intrinsics()
+        )
+
+    def get_depth_intrinsics(self) -> Any:
+        """返回对齐前的原始深度流内参。"""
+        self._require_started()
+        return (
+            self._profile.get_stream(self._rs.stream.depth)
+            .as_video_stream_profile()
+            .get_intrinsics()
+        )
+
+    def get_aligned_depth_intrinsics(self) -> Any:
+        """返回对齐到彩色图后的深度内参。"""
+        return self.get_color_intrinsics()
+
+    def get_depth_scale(self) -> float:
+        """返回深度单位到米的比例。"""
+        self._require_started()
+        return self._profile.get_device().first_depth_sensor().get_depth_scale()
+
+    def get_device_info(self) -> Dict[str, str]:
+        """返回相机序列号和固件版本。"""
+        self._require_started()
+        device = self._profile.get_device()
+        return {
+            "serial_number": device.get_info(self._rs.camera_info.serial_number),
+            "firmware_version": device.get_info(
+                self._rs.camera_info.firmware_version
+            ),
+        }
+
+    def _require_started(self) -> None:
+        if not self._started:
+            raise RuntimeError("RealSense 相机尚未启动")
 
     def _get_rs_module(self) -> Any:
         if self._rs is None:

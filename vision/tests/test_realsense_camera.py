@@ -14,13 +14,15 @@ class FakeConfig:
 
 
 class FakePipeline:
-    def __init__(self, frames):
+    def __init__(self, frames, profile):
         self.frames = frames
+        self.profile = profile
         self.started_with = None
         self.stopped = False
 
     def start(self, config):
         self.started_with = config
+        return self.profile
 
     def wait_for_frames(self):
         return self.frames
@@ -60,12 +62,21 @@ class FakeRealSense:
         bgr8 = "bgr8"
         z16 = "z16"
 
+    class camera_info:
+        serial_number = "serial_number"
+        firmware_version = "firmware_version"
+
     def __init__(self):
         self.raw_frames = object()
         self.color_frame = object()
         self.depth_frame = object()
         self.aligned_frames = FakeFrames(self.color_frame, self.depth_frame)
-        self.pipeline_instance = FakePipeline(self.raw_frames)
+        self.color_intrinsics = object()
+        self.depth_intrinsics = object()
+        self.profile_instance = FakePipelineProfile(
+            self.color_intrinsics, self.depth_intrinsics
+        )
+        self.pipeline_instance = FakePipeline(self.raw_frames, self.profile_instance)
         self.config_instance = FakeConfig()
         self.align_instance = FakeAlign(self.aligned_frames)
 
@@ -78,6 +89,48 @@ class FakeRealSense:
     def align(self, stream):
         assert stream == self.stream.color
         return self.align_instance
+
+
+class FakeVideoProfile:
+    def __init__(self, intrinsics):
+        self.intrinsics = intrinsics
+
+    def as_video_stream_profile(self):
+        return self
+
+    def get_intrinsics(self):
+        return self.intrinsics
+
+
+class FakeDepthSensor:
+    def get_depth_scale(self):
+        return 0.001
+
+
+class FakeDevice:
+    def first_depth_sensor(self):
+        return FakeDepthSensor()
+
+    def get_info(self, key):
+        return {
+            "serial_number": "243122071071",
+            "firmware_version": "05.15.01.55",
+        }[key]
+
+
+class FakePipelineProfile:
+    def __init__(self, color_intrinsics, depth_intrinsics):
+        self.color_profile = FakeVideoProfile(color_intrinsics)
+        self.depth_profile = FakeVideoProfile(depth_intrinsics)
+        self.device = FakeDevice()
+
+    def get_stream(self, stream):
+        if stream == "color":
+            return self.color_profile
+        return self.depth_profile
+
+    def get_device(self):
+        return self.device
 
 
 class RealSenseCameraTests(unittest.TestCase):
@@ -121,6 +174,23 @@ class RealSenseCameraTests(unittest.TestCase):
         camera.stop()
 
         self.assertTrue(rs.pipeline_instance.stopped)
+
+    def test_camera_exposes_intrinsics_depth_scale_and_device_info(self):
+        rs = FakeRealSense()
+        camera = RealSenseCamera(rs_module=rs)
+        camera.start()
+
+        self.assertIs(camera.get_color_intrinsics(), rs.color_intrinsics)
+        self.assertIs(camera.get_depth_intrinsics(), rs.depth_intrinsics)
+        self.assertIs(camera.get_aligned_depth_intrinsics(), rs.color_intrinsics)
+        self.assertEqual(camera.get_depth_scale(), 0.001)
+        self.assertEqual(
+            camera.get_device_info(),
+            {
+                "serial_number": "243122071071",
+                "firmware_version": "05.15.01.55",
+            },
+        )
 
     def test_camera_module_syntax_is_compatible_with_python_36(self):
         source = Path("camera/realsense_camera.py").read_text(encoding="utf-8")
