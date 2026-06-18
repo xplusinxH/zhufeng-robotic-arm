@@ -2,3 +2,4 @@ numpy
 pyserial>=3.5
 PyYAML>=6.0
 pytest>=7.0
+pupil-apriltags
