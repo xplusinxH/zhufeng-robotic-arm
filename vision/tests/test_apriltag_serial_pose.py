@@ -21,6 +21,7 @@ from apriltag.pose_cache import PoseCache
 from apriltag.pose_sample import BaseReferenceCache, robust_average_transforms
 from apriltag.pose_service import TagPoseService
 from tools.serve_tag1_pose_serial import _capture_pose_sample_json
+from tools.tag_debug_view import build_debug_overlay_items
 
 
 class AprilTagSerialPoseTests(unittest.TestCase):
@@ -240,27 +241,46 @@ class AprilTagSerialPoseTests(unittest.TestCase):
             ]
         )
 
-        payload = json.loads(
-            _capture_pose_sample_json(
-                camera=FakeCamera(),
-                detector=detector,
-                camera_params=(1.0, 1.0, 0.0, 0.0),
-                tag_size_m=0.08,
-                base_tag_id=1,
-                tool_tag_id=0,
-                sample_frames=2,
-                min_valid_frames=2,
-                seq=3,
-                np_module=FakeNumpy(),
-                base_ref_cache=base_cache,
-            )
+        response, status = _capture_pose_sample_json(
+            camera=FakeCamera(),
+            detector=detector,
+            camera_params=(1.0, 1.0, 0.0, 0.0),
+            tag_size_m=0.08,
+            base_tag_id=1,
+            tool_tag_id=0,
+            sample_frames=2,
+            min_valid_frames=2,
+            seq=3,
+            np_module=FakeNumpy(),
+            base_ref_cache=base_cache,
         )
+        payload = json.loads(response)
 
         self.assertEqual(payload["position_m"], [0.155, -0.045, 0.205])
+        self.assertEqual(status, {"base_ref_source": "cached", "last_status": "ok"})
         self.assertEqual(payload["quality"]["base_ref_source"], "cached")
         self.assertTrue(payload["quality"]["both_tags_seen"])
         self.assertFalse(payload["quality"]["base_ref_seen"])
         self.assertTrue(payload["quality"]["tool0_seen"])
+
+    def test_builds_debug_overlay_items_from_detections_and_status(self):
+        detections = [
+            FakeDetection(1, [(1, 2), (3, 4), (5, 6), (7, 8)]),
+            FakeDetection(0, [(10, 20), (30, 40), (50, 60), (70, 80)]),
+        ]
+
+        items = build_debug_overlay_items(
+            detections=detections,
+            base_tag_id=1,
+            tool_tag_id=0,
+            base_ref_source="cached",
+            last_status="ok",
+        )
+
+        self.assertEqual(items["status_lines"], ["base_ref_source: cached", "last_status: ok"])
+        self.assertEqual(items["tags"][0]["label"], "ID 1 base_ref")
+        self.assertEqual(items["tags"][1]["label"], "ID 0 tool0")
+        self.assertEqual(items["tags"][0]["corners"], [(1, 2), (3, 4), (5, 6), (7, 8)])
 
     def test_new_modules_are_python_36_compatible(self):
         for path in [
@@ -270,6 +290,7 @@ class AprilTagSerialPoseTests(unittest.TestCase):
             "apriltag/pose_cache.py",
             "apriltag/pose_sample.py",
             "apriltag/pose_service.py",
+            "tools/tag_debug_view.py",
             "tools/serve_tag1_pose_serial.py",
         ]:
             with open(path, "r", encoding="utf-8") as source_file:
@@ -329,3 +350,9 @@ class FakeNumpy:
     @staticmethod
     def asanyarray(value):
         return value
+
+
+class FakeDetection:
+    def __init__(self, tag_id, corners):
+        self.tag_id = tag_id
+        self.corners = corners

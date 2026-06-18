@@ -21,6 +21,7 @@ from communication.tag_pose_protocol import (
     is_get_tool_command,
 )
 from coordinate.pose_transform import relative_transform
+from tools.tag_debug_view import draw_debug_overlay, should_quit_from_key
 
 
 def _intrinsics_to_camera_params(intrinsics):
@@ -41,9 +42,11 @@ def run(
     sample_frames,
     min_valid_frames,
     base_cache_items,
+    show=False,
     frame_limit=None,
 ):
     """Run camera detection and respond to serial 6D pose sample queries."""
+    import cv2
     import numpy as np
     import serial
 
@@ -53,16 +56,30 @@ def run(
     serial_device = serial.Serial(serial_port, baudrate=baudrate, timeout=0)
     receive_buffer = ""
     handled_queries = 0
+    debug_state = {"base_ref_source": "none", "last_status": "waiting"}
 
     camera.start()
     try:
         camera_params = _intrinsics_to_camera_params(camera.get_color_intrinsics())
         print(
-            "AprilTag 6D 位姿串口服务已启动：port={} baudrate={} tag_size_m={:.4f} base_id={} tool_id={}".format(
-                serial_port, baudrate, tag_size_m, base_tag_id, tool_tag_id
+            "AprilTag 6D 位姿串口服务已启动：port={} baudrate={} tag_size_m={:.4f} base_id={} tool_id={} show={}".format(
+                serial_port, baudrate, tag_size_m, base_tag_id, tool_tag_id, show
             )
         )
         while frame_limit is None or handled_queries < frame_limit:
+            if show and _update_debug_window(
+                camera=camera,
+                detector=detector,
+                camera_params=camera_params,
+                tag_size_m=tag_size_m,
+                base_tag_id=base_tag_id,
+                tool_tag_id=tool_tag_id,
+                np_module=np,
+                cv2_module=cv2,
+                debug_state=debug_state,
+            ):
+                break
+
             receive_buffer, query_count = _handle_serial_queries(
                 serial_device=serial_device,
                 receive_buffer=receive_buffer,
@@ -77,6 +94,7 @@ def run(
                 next_seq=handled_queries + 1,
                 np_module=np,
                 base_ref_cache=base_ref_cache,
+                debug_state=debug_state,
             )
             handled_queries += query_count
             time.sleep(0.001)
@@ -88,6 +106,38 @@ def run(
     finally:
         camera.stop()
         serial_device.close()
+        if show:
+            cv2.destroyAllWindows()
+
+
+def _update_debug_window(
+    camera,
+    detector,
+    camera_params,
+    tag_size_m,
+    base_tag_id,
+    tool_tag_id,
+    np_module,
+    cv2_module,
+    debug_state,
+):
+    color_frame, _depth_frame = camera.capture_aligned()
+    color_bgr = np_module.asanyarray(color_frame.get_data()).copy()
+    detections = detector.detect(
+        color_bgr,
+        camera_params=camera_params,
+        tag_size_m=tag_size_m,
+    )
+    draw_debug_overlay(
+        image_bgr=color_bgr,
+        detections=detections,
+        base_tag_id=base_tag_id,
+        tool_tag_id=tool_tag_id,
+        base_ref_source=debug_state.get("base_ref_source", "none"),
+        last_status=debug_state.get("last_status", "waiting"),
+    )
+    cv2_module.imshow("Sukinee AprilTag Debug", color_bgr)
+    return should_quit_from_key(cv2_module.waitKey(1))
 
 
 def _handle_serial_queries(
@@ -104,6 +154,7 @@ def _handle_serial_queries(
     next_seq,
     np_module,
     base_ref_cache,
+    debug_state,
 ):
     data = serial_device.read(256)
     if data:
@@ -114,7 +165,7 @@ def _handle_serial_queries(
         frame, receive_buffer = receive_buffer.split("#", 1)
         message = frame + "#"
         if is_get_tag_pose_command(message):
-            response = _capture_pose_sample_json(
+            response, status = _capture_pose_sample_json(
                 camera=camera,
                 detector=detector,
                 camera_params=camera_params,
@@ -127,11 +178,14 @@ def _handle_serial_queries(
                 np_module=np_module,
                 base_ref_cache=base_ref_cache,
             )
+            debug_state["base_ref_source"] = status["base_ref_source"]
+            debug_state["last_status"] = status["last_status"]
             serial_device.write((response + "\n").encode("utf-8"))
             print("serial <= {}  => {}".format(message, response))
             query_count += 1
         elif is_get_tool_command(message):
             response = format_error("deprecated command; use @GET_TAG_POSE#")
+            debug_state["last_status"] = "deprecated command"
             serial_device.write((response + "\n").encode("ascii", "ignore"))
     return receive_buffer[-128:], query_count
 
@@ -187,33 +241,40 @@ def _capture_pose_sample_json(
 
     timestamp = _timestamp_now()
     sample_id = "S{:04d}".format(seq)
+    base_ref_source = _base_ref_source(used_live_base, used_cached_base)
     if len(valid_relative_transforms) < min_valid_frames:
-        return format_invalid_pose_sample(
+        return (
+            format_invalid_pose_sample(
+                sample_id=sample_id,
+                seq=seq,
+                timestamp_jetson=timestamp,
+                tag_size_m=tag_size_m,
+                frame_count_used=len(valid_relative_transforms),
+                base_ref_seen=base_ref_seen,
+                tool0_seen=tool0_seen,
+                base_ref_source=base_ref_source,
+                tag_base_ref_id=base_tag_id,
+                tag_tool0_id=tool_tag_id,
+            ),
+            {"base_ref_source": base_ref_source, "last_status": "invalid sample"},
+        )
+
+    fused_transform = robust_average_transforms(valid_relative_transforms)
+    return (
+        format_pose_sample(
             sample_id=sample_id,
             seq=seq,
             timestamp_jetson=timestamp,
+            transform=fused_transform,
             tag_size_m=tag_size_m,
             frame_count_used=len(valid_relative_transforms),
             base_ref_seen=base_ref_seen,
             tool0_seen=tool0_seen,
-            base_ref_source=_base_ref_source(used_live_base, used_cached_base),
+            base_ref_source=base_ref_source,
             tag_base_ref_id=base_tag_id,
             tag_tool0_id=tool_tag_id,
-        )
-
-    fused_transform = robust_average_transforms(valid_relative_transforms)
-    return format_pose_sample(
-        sample_id=sample_id,
-        seq=seq,
-        timestamp_jetson=timestamp,
-        transform=fused_transform,
-        tag_size_m=tag_size_m,
-        frame_count_used=len(valid_relative_transforms),
-        base_ref_seen=base_ref_seen,
-        tool0_seen=tool0_seen,
-        base_ref_source=_base_ref_source(used_live_base, used_cached_base),
-        tag_base_ref_id=base_tag_id,
-        tag_tool0_id=tool_tag_id,
+        ),
+        {"base_ref_source": base_ref_source, "last_status": "ok"},
     )
 
 
@@ -241,6 +302,7 @@ def main():
     parser.add_argument("--sample-frames", type=int, default=15, help="每个 sample 连续采集帧数")
     parser.add_argument("--min-valid-frames", type=int, default=5, help="最少有效 tool0 帧数")
     parser.add_argument("--base-cache-items", type=int, default=20, help="缓存的底座参考观测数量")
+    parser.add_argument("--show", action="store_true", help="在 Jetson 屏幕显示 AprilTag 调试窗口")
     parser.add_argument("--frames", type=int, help="测试用：处理指定查询次数后退出")
     args = parser.parse_args()
 
@@ -253,6 +315,7 @@ def main():
         sample_frames=args.sample_frames,
         min_valid_frames=args.min_valid_frames,
         base_cache_items=args.base_cache_items,
+        show=args.show,
         frame_limit=args.frames,
     )
     return 0

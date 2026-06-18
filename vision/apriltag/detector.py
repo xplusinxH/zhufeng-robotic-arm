@@ -33,15 +33,7 @@ class AprilTagPoseDetector:
         tag_size_m: float,
     ) -> Dict[int, list]:
         """Return ``{tag_id: T_camera_tag}`` for all detected tags."""
-        import cv2
-
-        gray = cv2.cvtColor(color_bgr, cv2.COLOR_BGR2GRAY)
-        detections = self._detector.detect(
-            gray,
-            estimate_tag_pose=True,
-            camera_params=camera_params,
-            tag_size=float(tag_size_m),
-        )
+        detections = self.detect(color_bgr, camera_params, tag_size_m)
 
         transforms = {}
         for detection in detections:
@@ -56,3 +48,20 @@ class AprilTagPoseDetector:
                 ),
             )
         return transforms
+
+    def detect(
+        self,
+        color_bgr,
+        camera_params: Tuple[float, float, float, float],
+        tag_size_m: float,
+    ):
+        """Return raw pupil-apriltags detections with pose estimates."""
+        import cv2
+
+        gray = cv2.cvtColor(color_bgr, cv2.COLOR_BGR2GRAY)
+        return self._detector.detect(
+            gray,
+            estimate_tag_pose=True,
+            camera_params=camera_params,
+            tag_size=float(tag_size_m),
+        )
