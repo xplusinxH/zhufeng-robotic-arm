@@ -26,7 +26,7 @@ serial:
   encoding: ascii
 
 apriltag:
-  family: tag36h11
+  family: tag25h9
   base_tag_id: 1
   tool_tag_id: 0
   tag_size_mm: 80

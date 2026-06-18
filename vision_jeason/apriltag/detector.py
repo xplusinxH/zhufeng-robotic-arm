@@ -8,7 +8,7 @@ from coordinate.pose_transform import make_transform
 class AprilTagPoseDetector:
     """Detect AprilTags and return camera-to-tag transforms."""
 
-    def __init__(self, family: str = "tag36h11", nthreads: int = 2) -> None:
+    def __init__(self, family: str = "tag25h9", nthreads: int = 2) -> None:
         try:
             from pupil_apriltags import Detector
         except ImportError as exc:

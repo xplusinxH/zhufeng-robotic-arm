@@ -175,6 +175,7 @@ class AprilTagSerialPoseTests(unittest.TestCase):
         self.assertEqual(payload["sample_id"], "S0001")
         self.assertEqual(payload["from_frame"], "tag_base_ref")
         self.assertEqual(payload["to_frame"], "tag_tool0")
+        self.assertEqual(payload["tag_family"], "tag25h9")
         self.assertEqual(payload["tag_base_ref_id"], 1)
         self.assertEqual(payload["tag_tool0_id"], 0)
         self.assertEqual(payload["position_m"], [0.1, -0.2, 0.3])
