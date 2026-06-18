@@ -56,8 +56,8 @@ def format_pose_sample(
     hamming_max: Optional[int] = None,
     mean_reprojection_error_px: Optional[float] = None,
     tag_family: str = "tag25h9",
-    tag_base_ref_id: int = 1,
-    tag_tool0_id: int = 0,
+    tag_base_ref_id: int = 0,
+    tag_tool0_id: int = 1,
     crc32: Optional[str] = None,
 ) -> str:
     """Format one valid 6D pose sample as a single JSON line."""
@@ -96,8 +96,8 @@ def format_invalid_pose_sample(
     tool0_seen: bool,
     base_ref_source: str = "none",
     tag_family: str = "tag25h9",
-    tag_base_ref_id: int = 1,
-    tag_tool0_id: int = 0,
+    tag_base_ref_id: int = 0,
+    tag_tool0_id: int = 1,
     crc32: Optional[str] = None,
 ) -> str:
     """Format an invalid sample as JSON with explicit quality flags."""

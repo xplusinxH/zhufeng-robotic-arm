@@ -27,8 +27,8 @@ serial:
 
 apriltag:
   family: tag25h9
-  base_tag_id: 1
-  tool_tag_id: 0
+  base_tag_id: 0
+  tool_tag_id: 1
   tag_size_mm: 80
   sample_frames: 15
   min_valid_frames: 5

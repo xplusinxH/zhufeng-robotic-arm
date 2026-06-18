@@ -13,7 +13,7 @@ Vector3 = Tuple[float, float, float]
 class TagPoseService:
     """Maintain the latest end-tag position relative to the base tag."""
 
-    def __init__(self, base_tag_id: int = 1, tool_tag_id: int = 0, max_age_s: float = 0.5) -> None:
+    def __init__(self, base_tag_id: int = 0, tool_tag_id: int = 1, max_age_s: float = 0.5) -> None:
         self.base_tag_id = int(base_tag_id)
         self.tool_tag_id = int(tool_tag_id)
         self.cache = PoseCache(max_age_s=max_age_s)

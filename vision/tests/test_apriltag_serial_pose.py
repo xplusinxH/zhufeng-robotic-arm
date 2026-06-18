@@ -91,19 +91,19 @@ class AprilTagSerialPoseTests(unittest.TestCase):
     def test_service_defaults_to_confirmed_tag_ids(self):
         service = TagPoseService()
 
-        self.assertEqual(service.base_tag_id, 1)
-        self.assertEqual(service.tool_tag_id, 0)
+        self.assertEqual(service.base_tag_id, 0)
+        self.assertEqual(service.tool_tag_id, 1)
 
     def test_service_updates_cache_when_both_tags_are_detected(self):
-        service = TagPoseService(base_tag_id=1, tool_tag_id=0, max_age_s=0.5)
+        service = TagPoseService(base_tag_id=0, tool_tag_id=1, max_age_s=0.5)
         identity_rotation = [
             [1.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
             [0.0, 0.0, 1.0],
         ]
         detections = {
-            1: make_transform(identity_rotation, (0.10, 0.00, 0.50)),
-            0: make_transform(identity_rotation, (0.25, -0.05, 0.70)),
+            0: make_transform(identity_rotation, (0.10, 0.00, 0.50)),
+            1: make_transform(identity_rotation, (0.25, -0.05, 0.70)),
         }
 
         updated = service.update_from_detections(detections, now_s=10.0)
@@ -195,8 +195,8 @@ class AprilTagSerialPoseTests(unittest.TestCase):
         self.assertEqual(payload["from_frame"], "tag_base_ref")
         self.assertEqual(payload["to_frame"], "tag_tool0")
         self.assertEqual(payload["tag_family"], "tag25h9")
-        self.assertEqual(payload["tag_base_ref_id"], 1)
-        self.assertEqual(payload["tag_tool0_id"], 0)
+        self.assertEqual(payload["tag_base_ref_id"], 0)
+        self.assertEqual(payload["tag_tool0_id"], 1)
         self.assertEqual(payload["position_m"], [0.1, -0.2, 0.3])
         self.assertEqual(payload["orientation_xyzw"], [0.0, 0.0, 0.0, 1.0])
         self.assertEqual(payload["frame_count_used"], 15)
@@ -236,8 +236,8 @@ class AprilTagSerialPoseTests(unittest.TestCase):
         base_cache.add(make_transform(identity_rotation, (0.10, 0.00, 0.50)))
         detector = FakeDetector(
             [
-                {0: make_transform(identity_rotation, (0.25, -0.05, 0.70))},
-                {0: make_transform(identity_rotation, (0.26, -0.04, 0.71))},
+                {1: make_transform(identity_rotation, (0.25, -0.05, 0.70))},
+                {1: make_transform(identity_rotation, (0.26, -0.04, 0.71))},
             ]
         )
 
@@ -246,8 +246,8 @@ class AprilTagSerialPoseTests(unittest.TestCase):
             detector=detector,
             camera_params=(1.0, 1.0, 0.0, 0.0),
             tag_size_m=0.08,
-            base_tag_id=1,
-            tool_tag_id=0,
+            base_tag_id=0,
+            tool_tag_id=1,
             sample_frames=2,
             min_valid_frames=2,
             seq=3,
@@ -265,21 +265,21 @@ class AprilTagSerialPoseTests(unittest.TestCase):
 
     def test_builds_debug_overlay_items_from_detections_and_status(self):
         detections = [
-            FakeDetection(1, [(1, 2), (3, 4), (5, 6), (7, 8)]),
-            FakeDetection(0, [(10, 20), (30, 40), (50, 60), (70, 80)]),
+            FakeDetection(0, [(1, 2), (3, 4), (5, 6), (7, 8)]),
+            FakeDetection(1, [(10, 20), (30, 40), (50, 60), (70, 80)]),
         ]
 
         items = build_debug_overlay_items(
             detections=detections,
-            base_tag_id=1,
-            tool_tag_id=0,
+            base_tag_id=0,
+            tool_tag_id=1,
             base_ref_source="cached",
             last_status="ok",
         )
 
         self.assertEqual(items["status_lines"], ["base_ref_source: cached", "last_status: ok"])
-        self.assertEqual(items["tags"][0]["label"], "ID 1 base_ref")
-        self.assertEqual(items["tags"][1]["label"], "ID 0 tool0")
+        self.assertEqual(items["tags"][0]["label"], "ID 0 base_ref")
+        self.assertEqual(items["tags"][1]["label"], "ID 1 tool0")
         self.assertEqual(items["tags"][0]["corners"], [(1, 2), (3, 4), (5, 6), (7, 8)])
 
     def test_new_modules_are_python_36_compatible(self):
