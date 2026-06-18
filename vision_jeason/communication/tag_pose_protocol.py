@@ -51,6 +51,7 @@ def format_pose_sample(
     frame_count_used: int,
     base_ref_seen: bool,
     tool0_seen: bool,
+    base_ref_source: str = "live",
     decision_margin_min: Optional[float] = None,
     hamming_max: Optional[int] = None,
     mean_reprojection_error_px: Optional[float] = None,
@@ -77,6 +78,7 @@ def format_pose_sample(
     payload["quality"] = _quality_payload(
         base_ref_seen=base_ref_seen,
         tool0_seen=tool0_seen,
+        base_ref_source=base_ref_source,
         mean_reprojection_error_px=mean_reprojection_error_px,
         decision_margin_min=decision_margin_min,
         hamming_max=hamming_max,
@@ -92,6 +94,7 @@ def format_invalid_pose_sample(
     frame_count_used: int,
     base_ref_seen: bool,
     tool0_seen: bool,
+    base_ref_source: str = "none",
     tag_family: str = "tag25h9",
     tag_base_ref_id: int = 1,
     tag_tool0_id: int = 0,
@@ -114,6 +117,7 @@ def format_invalid_pose_sample(
     payload["quality"] = _quality_payload(
         base_ref_seen=base_ref_seen,
         tool0_seen=tool0_seen,
+        base_ref_source=base_ref_source,
         mean_reprojection_error_px=None,
         decision_margin_min=None,
         hamming_max=None,
@@ -151,14 +155,16 @@ def _base_payload(
 def _quality_payload(
     base_ref_seen,
     tool0_seen,
+    base_ref_source,
     mean_reprojection_error_px,
     decision_margin_min,
     hamming_max,
 ):
     return {
-        "both_tags_seen": bool(base_ref_seen and tool0_seen),
+        "both_tags_seen": bool(tool0_seen and base_ref_source in ("live", "cached", "mixed")),
         "base_ref_seen": bool(base_ref_seen),
         "tool0_seen": bool(tool0_seen),
+        "base_ref_source": str(base_ref_source),
         "mean_reprojection_error_px": mean_reprojection_error_px,
         "decision_margin_min": decision_margin_min,
         "hamming_max": hamming_max,

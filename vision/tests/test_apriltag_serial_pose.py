@@ -18,8 +18,9 @@ from coordinate.pose_transform import (
     transform_translation_mm,
 )
 from apriltag.pose_cache import PoseCache
-from apriltag.pose_sample import robust_average_transforms
+from apriltag.pose_sample import BaseReferenceCache, robust_average_transforms
 from apriltag.pose_service import TagPoseService
+from tools.serve_tag1_pose_serial import _capture_pose_sample_json
 
 
 class AprilTagSerialPoseTests(unittest.TestCase):
@@ -148,6 +149,22 @@ class AprilTagSerialPoseTests(unittest.TestCase):
 
         self.assertEqual(transform_pose_xyzw(fused), ((0.11, 0.21, 0.31), (0.0, 0.0, 0.0, 1.0)))
 
+    def test_base_reference_cache_fuses_recent_base_observations(self):
+        identity_rotation = [
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+        cache = BaseReferenceCache(max_items=3)
+        cache.add(make_transform(identity_rotation, (0.10, 0.00, 0.50)))
+        cache.add(make_transform(identity_rotation, (0.11, 0.01, 0.51)))
+        cache.add(make_transform(identity_rotation, (5.00, 5.00, 5.00)))
+        cache.add(make_transform(identity_rotation, (0.12, 0.02, 0.52)))
+
+        fused = cache.get_fused()
+
+        self.assertEqual(transform_pose_xyzw(fused), ((0.12, 0.02, 0.52), (0.0, 0.0, 0.0, 1.0)))
+
     def test_formats_valid_6d_pose_sample_json(self):
         identity_rotation = [
             [1.0, 0.0, 0.0],
@@ -166,6 +183,7 @@ class AprilTagSerialPoseTests(unittest.TestCase):
                 frame_count_used=15,
                 base_ref_seen=True,
                 tool0_seen=True,
+                base_ref_source="cached",
                 decision_margin_min=42.0,
                 hamming_max=0,
             )
@@ -182,6 +200,7 @@ class AprilTagSerialPoseTests(unittest.TestCase):
         self.assertEqual(payload["orientation_xyzw"], [0.0, 0.0, 0.0, 1.0])
         self.assertEqual(payload["frame_count_used"], 15)
         self.assertTrue(payload["quality"]["both_tags_seen"])
+        self.assertEqual(payload["quality"]["base_ref_source"], "cached")
         self.assertEqual(payload["quality"]["decision_margin_min"], 42.0)
         self.assertEqual(payload["quality"]["hamming_max"], 0)
 
@@ -195,14 +214,53 @@ class AprilTagSerialPoseTests(unittest.TestCase):
                 frame_count_used=0,
                 base_ref_seen=True,
                 tool0_seen=False,
+                base_ref_source="none",
             )
         )
 
         self.assertIsNone(payload["position_m"])
         self.assertIsNone(payload["orientation_xyzw"])
         self.assertFalse(payload["quality"]["both_tags_seen"])
+        self.assertEqual(payload["quality"]["base_ref_source"], "none")
         self.assertTrue(payload["quality"]["base_ref_seen"])
         self.assertFalse(payload["quality"]["tool0_seen"])
+
+    def test_capture_sample_uses_cached_base_reference_when_base_is_not_visible(self):
+        identity_rotation = [
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+        base_cache = BaseReferenceCache(max_items=5)
+        base_cache.add(make_transform(identity_rotation, (0.10, 0.00, 0.50)))
+        detector = FakeDetector(
+            [
+                {0: make_transform(identity_rotation, (0.25, -0.05, 0.70))},
+                {0: make_transform(identity_rotation, (0.26, -0.04, 0.71))},
+            ]
+        )
+
+        payload = json.loads(
+            _capture_pose_sample_json(
+                camera=FakeCamera(),
+                detector=detector,
+                camera_params=(1.0, 1.0, 0.0, 0.0),
+                tag_size_m=0.08,
+                base_tag_id=1,
+                tool_tag_id=0,
+                sample_frames=2,
+                min_valid_frames=2,
+                seq=3,
+                np_module=FakeNumpy(),
+                base_ref_cache=base_cache,
+            )
+        )
+
+        self.assertEqual(payload["position_m"], [0.155, -0.045, 0.205])
+        self.assertEqual(payload["quality"]["base_ref_source"], "cached")
+        self.assertTrue(payload["quality"]["both_tags_seen"])
+        self.assertFalse(payload["quality"]["base_ref_seen"])
+        self.assertTrue(payload["quality"]["tool0_seen"])
 
     def test_new_modules_are_python_36_compatible(self):
         for path in [
@@ -247,3 +305,27 @@ def _matrix_close(left, right, tolerance=1e-9):
             if abs(left[row][col] - right[row][col]) > tolerance:
                 return False
     return True
+
+
+class FakeCamera:
+    def capture_aligned(self):
+        return FakeColorFrame(), None
+
+
+class FakeColorFrame:
+    def get_data(self):
+        return []
+
+
+class FakeDetector:
+    def __init__(self, detections):
+        self._detections = list(detections)
+
+    def detect_camera_to_tag(self, color_bgr, camera_params, tag_size_m):
+        return self._detections.pop(0)
+
+
+class FakeNumpy:
+    @staticmethod
+    def asanyarray(value):
+        return value

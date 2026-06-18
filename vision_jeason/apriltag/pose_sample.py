@@ -31,6 +31,30 @@ def robust_average_transforms(transforms: Sequence[Sequence[Sequence[float]]]):
     return make_transform(quaternion_xyzw_to_rotation_matrix(quaternion), translation)
 
 
+class BaseReferenceCache:
+    """Keep recent camera-to-base-ref observations and return their fused pose."""
+
+    def __init__(self, max_items=20):
+        self.max_items = int(max_items)
+        self._items = []
+
+    def add(self, camera_to_base_ref):
+        """Add one camera-to-base-ref transform."""
+        self._items.append(camera_to_base_ref)
+        if len(self._items) > self.max_items:
+            self._items = self._items[-self.max_items :]
+
+    def has_value(self):
+        """Return whether at least one base reference observation is cached."""
+        return bool(self._items)
+
+    def get_fused(self):
+        """Return the fused camera-to-base-ref transform, or None if empty."""
+        if not self._items:
+            return None
+        return robust_average_transforms(self._items)
+
+
 def _median(values):
     ordered = sorted(float(value) for value in values)
     middle = len(ordered) // 2

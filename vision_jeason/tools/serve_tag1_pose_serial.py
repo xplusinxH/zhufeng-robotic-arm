@@ -11,7 +11,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from apriltag.detector import AprilTagPoseDetector
-from apriltag.pose_sample import robust_average_transforms
+from apriltag.pose_sample import BaseReferenceCache, robust_average_transforms
 from camera.realsense_camera import RealSenseCamera
 from communication.tag_pose_protocol import (
     format_error,
@@ -40,6 +40,7 @@ def run(
     tool_tag_id,
     sample_frames,
     min_valid_frames,
+    base_cache_items,
     frame_limit=None,
 ):
     """Run camera detection and respond to serial 6D pose sample queries."""
@@ -48,6 +49,7 @@ def run(
 
     camera = RealSenseCamera()
     detector = AprilTagPoseDetector()
+    base_ref_cache = BaseReferenceCache(max_items=base_cache_items)
     serial_device = serial.Serial(serial_port, baudrate=baudrate, timeout=0)
     receive_buffer = ""
     handled_queries = 0
@@ -74,6 +76,7 @@ def run(
                 min_valid_frames=min_valid_frames,
                 next_seq=handled_queries + 1,
                 np_module=np,
+                base_ref_cache=base_ref_cache,
             )
             handled_queries += query_count
             time.sleep(0.001)
@@ -100,6 +103,7 @@ def _handle_serial_queries(
     min_valid_frames,
     next_seq,
     np_module,
+    base_ref_cache,
 ):
     data = serial_device.read(256)
     if data:
@@ -121,6 +125,7 @@ def _handle_serial_queries(
                 min_valid_frames=min_valid_frames,
                 seq=next_seq + query_count,
                 np_module=np_module,
+                base_ref_cache=base_ref_cache,
             )
             serial_device.write((response + "\n").encode("utf-8"))
             print("serial <= {}  => {}".format(message, response))
@@ -142,10 +147,13 @@ def _capture_pose_sample_json(
     min_valid_frames,
     seq,
     np_module,
+    base_ref_cache,
 ):
     valid_relative_transforms = []
     base_ref_seen = False
     tool0_seen = False
+    used_cached_base = False
+    used_live_base = False
 
     for _index in range(sample_frames):
         color_frame, _depth_frame = camera.capture_aligned()
@@ -157,9 +165,24 @@ def _capture_pose_sample_json(
         )
         base_ref_seen = base_ref_seen or base_tag_id in detections
         tool0_seen = tool0_seen or tool_tag_id in detections
-        if base_tag_id in detections and tool_tag_id in detections:
+
+        if base_tag_id in detections:
+            base_ref_cache.add(detections[base_tag_id])
+
+        if tool_tag_id not in detections:
+            continue
+
+        camera_to_base = None
+        if base_tag_id in detections:
+            camera_to_base = detections[base_tag_id]
+            used_live_base = True
+        elif base_ref_cache.has_value():
+            camera_to_base = base_ref_cache.get_fused()
+            used_cached_base = True
+
+        if camera_to_base is not None:
             valid_relative_transforms.append(
-                relative_transform(detections[base_tag_id], detections[tool_tag_id])
+                relative_transform(camera_to_base, detections[tool_tag_id])
             )
 
     timestamp = _timestamp_now()
@@ -173,6 +196,7 @@ def _capture_pose_sample_json(
             frame_count_used=len(valid_relative_transforms),
             base_ref_seen=base_ref_seen,
             tool0_seen=tool0_seen,
+            base_ref_source=_base_ref_source(used_live_base, used_cached_base),
             tag_base_ref_id=base_tag_id,
             tag_tool0_id=tool_tag_id,
         )
@@ -187,9 +211,20 @@ def _capture_pose_sample_json(
         frame_count_used=len(valid_relative_transforms),
         base_ref_seen=base_ref_seen,
         tool0_seen=tool0_seen,
+        base_ref_source=_base_ref_source(used_live_base, used_cached_base),
         tag_base_ref_id=base_tag_id,
         tag_tool0_id=tool_tag_id,
     )
+
+
+def _base_ref_source(used_live_base, used_cached_base):
+    if used_live_base and used_cached_base:
+        return "mixed"
+    if used_live_base:
+        return "live"
+    if used_cached_base:
+        return "cached"
+    return "none"
 
 
 def _timestamp_now():
@@ -200,11 +235,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--serial-port", default="/dev/ttyUSB0", help="串口设备路径")
     parser.add_argument("--baudrate", type=int, default=115200, help="串口波特率")
-    parser.add_argument("--tag-size-mm", type=float, required=True, help="AprilTag 黑白图案边长，单位毫米")
+    parser.add_argument("--tag-size-mm", type=float, required=True, help="AprilTag 黑色外框边长，单位毫米")
     parser.add_argument("--base-tag-id", type=int, default=1, help="底座参考 tag id")
     parser.add_argument("--tool-tag-id", type=int, default=0, help="末端 tool0 tag id")
     parser.add_argument("--sample-frames", type=int, default=15, help="每个 sample 连续采集帧数")
-    parser.add_argument("--min-valid-frames", type=int, default=5, help="最少有效双 tag 帧数")
+    parser.add_argument("--min-valid-frames", type=int, default=5, help="最少有效 tool0 帧数")
+    parser.add_argument("--base-cache-items", type=int, default=20, help="缓存的底座参考观测数量")
     parser.add_argument("--frames", type=int, help="测试用：处理指定查询次数后退出")
     args = parser.parse_args()
 
@@ -216,6 +252,7 @@ def main():
         tool_tag_id=args.tool_tag_id,
         sample_frames=args.sample_frames,
         min_valid_frames=args.min_valid_frames,
+        base_cache_items=args.base_cache_items,
         frame_limit=args.frames,
     )
     return 0
