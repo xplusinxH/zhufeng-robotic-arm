@@ -1,18 +1,24 @@
 import ast
+import json
 import unittest
 
 from communication.tag_pose_protocol import (
+    format_invalid_pose_sample,
     format_no_tag,
+    format_pose_sample,
     format_tag_pose,
+    is_get_tag_pose_command,
     is_get_tool_command,
 )
 from coordinate.pose_transform import (
     invert_transform,
     make_transform,
     relative_transform,
+    transform_pose_xyzw,
     transform_translation_mm,
 )
 from apriltag.pose_cache import PoseCache
+from apriltag.pose_sample import robust_average_transforms
 from apriltag.pose_service import TagPoseService
 
 
@@ -21,6 +27,11 @@ class AprilTagSerialPoseTests(unittest.TestCase):
         self.assertTrue(is_get_tool_command("@GET_TOOL#"))
         self.assertTrue(is_get_tool_command(" @GET_TOOL#\r\n"))
         self.assertFalse(is_get_tool_command("@GET_TARGET#"))
+
+    def test_recognizes_get_tag_pose_query_with_line_endings(self):
+        self.assertTrue(is_get_tag_pose_command("@GET_TAG_POSE#"))
+        self.assertTrue(is_get_tag_pose_command(" @GET_TAG_POSE#\r\n"))
+        self.assertFalse(is_get_tag_pose_command("@GET_TOOL#"))
 
     def test_formats_tool_pose_in_millimeters(self):
         frame = format_tag_pose((0.12345, -0.0567, 0.3456), age_ms=42)
@@ -43,6 +54,19 @@ class AprilTagSerialPoseTests(unittest.TestCase):
 
         self.assertEqual(transform_translation_mm(tag0_to_tag1), (150.0, -50.0, 200.0))
 
+    def test_extracts_6d_pose_as_position_and_xyzw_quaternion(self):
+        identity_rotation = [
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+        transform = make_transform(identity_rotation, (0.10, -0.20, 0.30))
+
+        position_m, orientation_xyzw = transform_pose_xyzw(transform)
+
+        self.assertEqual(position_m, (0.10, -0.20, 0.30))
+        self.assertEqual(orientation_xyzw, (0.0, 0.0, 0.0, 1.0))
+
     def test_inverts_rigid_transform(self):
         rotation = [
             [0.0, -1.0, 0.0],
@@ -62,16 +86,22 @@ class AprilTagSerialPoseTests(unittest.TestCase):
         self.assertEqual(cache.get(now_s=10.2), ((0.1, 0.2, 0.3), 200))
         self.assertIsNone(cache.get(now_s=10.6))
 
+    def test_service_defaults_to_confirmed_tag_ids(self):
+        service = TagPoseService()
+
+        self.assertEqual(service.base_tag_id, 1)
+        self.assertEqual(service.tool_tag_id, 0)
+
     def test_service_updates_cache_when_both_tags_are_detected(self):
-        service = TagPoseService(base_tag_id=0, tool_tag_id=1, max_age_s=0.5)
+        service = TagPoseService(base_tag_id=1, tool_tag_id=0, max_age_s=0.5)
         identity_rotation = [
             [1.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
             [0.0, 0.0, 1.0],
         ]
         detections = {
-            0: make_transform(identity_rotation, (0.10, 0.00, 0.50)),
-            1: make_transform(identity_rotation, (0.25, -0.05, 0.70)),
+            1: make_transform(identity_rotation, (0.10, 0.00, 0.50)),
+            0: make_transform(identity_rotation, (0.25, -0.05, 0.70)),
         }
 
         updated = service.update_from_detections(detections, now_s=10.0)
@@ -102,12 +132,84 @@ class AprilTagSerialPoseTests(unittest.TestCase):
 
         self.assertEqual(service.format_response(now_s=10.1), "@NO_TAG#")
 
+    def test_robust_average_uses_median_translation_and_average_orientation(self):
+        identity_rotation = [
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+        transforms = [
+            make_transform(identity_rotation, (0.10, 0.20, 0.30)),
+            make_transform(identity_rotation, (0.11, 0.21, 0.31)),
+            make_transform(identity_rotation, (9.00, 9.00, 9.00)),
+        ]
+
+        fused = robust_average_transforms(transforms)
+
+        self.assertEqual(transform_pose_xyzw(fused), ((0.11, 0.21, 0.31), (0.0, 0.0, 0.0, 1.0)))
+
+    def test_formats_valid_6d_pose_sample_json(self):
+        identity_rotation = [
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+        transform = make_transform(identity_rotation, (0.10, -0.20, 0.30))
+
+        payload = json.loads(
+            format_pose_sample(
+                sample_id="S0001",
+                seq=1,
+                timestamp_jetson="2026-06-18T12:00:00.000+08:00",
+                transform=transform,
+                tag_size_m=0.08,
+                frame_count_used=15,
+                base_ref_seen=True,
+                tool0_seen=True,
+                decision_margin_min=42.0,
+                hamming_max=0,
+            )
+        )
+
+        self.assertEqual(payload["protocol"], "sukinee_tag_pose_v1")
+        self.assertEqual(payload["sample_id"], "S0001")
+        self.assertEqual(payload["from_frame"], "tag_base_ref")
+        self.assertEqual(payload["to_frame"], "tag_tool0")
+        self.assertEqual(payload["tag_base_ref_id"], 1)
+        self.assertEqual(payload["tag_tool0_id"], 0)
+        self.assertEqual(payload["position_m"], [0.1, -0.2, 0.3])
+        self.assertEqual(payload["orientation_xyzw"], [0.0, 0.0, 0.0, 1.0])
+        self.assertEqual(payload["frame_count_used"], 15)
+        self.assertTrue(payload["quality"]["both_tags_seen"])
+        self.assertEqual(payload["quality"]["decision_margin_min"], 42.0)
+        self.assertEqual(payload["quality"]["hamming_max"], 0)
+
+    def test_formats_invalid_pose_sample_json(self):
+        payload = json.loads(
+            format_invalid_pose_sample(
+                sample_id="S0002",
+                seq=2,
+                timestamp_jetson="2026-06-18T12:00:01.000+08:00",
+                tag_size_m=0.08,
+                frame_count_used=0,
+                base_ref_seen=True,
+                tool0_seen=False,
+            )
+        )
+
+        self.assertIsNone(payload["position_m"])
+        self.assertIsNone(payload["orientation_xyzw"])
+        self.assertFalse(payload["quality"]["both_tags_seen"])
+        self.assertTrue(payload["quality"]["base_ref_seen"])
+        self.assertFalse(payload["quality"]["tool0_seen"])
+
     def test_new_modules_are_python_36_compatible(self):
         for path in [
             "communication/tag_pose_protocol.py",
             "coordinate/pose_transform.py",
             "apriltag/detector.py",
             "apriltag/pose_cache.py",
+            "apriltag/pose_sample.py",
             "apriltag/pose_service.py",
             "tools/serve_tag1_pose_serial.py",
         ]:
