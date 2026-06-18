@@ -71,6 +71,21 @@ def draw_debug_overlay(image_bgr, detections, base_tag_id, tool_tag_id, base_ref
     return image_bgr
 
 
+def resize_debug_image(image_bgr, width, height, cv2_module):
+    """Resize debug image for display while preserving aspect ratio when needed."""
+    target_width = int(width or 0)
+    target_height = int(height or 0)
+    if target_width <= 0 and target_height <= 0:
+        return image_bgr
+
+    image_height, image_width = image_bgr.shape[:2]
+    if target_width <= 0:
+        target_width = int(round(float(image_width) * float(target_height) / float(image_height)))
+    if target_height <= 0:
+        target_height = int(round(float(image_height) * float(target_width) / float(image_width)))
+    return cv2_module.resize(image_bgr, (target_width, target_height))
+
+
 def should_quit_from_key(key_code):
     """Return whether an OpenCV waitKey result asks to quit."""
     key = int(key_code) & 0xFF

@@ -21,7 +21,7 @@ from communication.tag_pose_protocol import (
     is_get_tool_command,
 )
 from coordinate.pose_transform import relative_transform
-from tools.tag_debug_view import draw_debug_overlay, should_quit_from_key
+from tools.tag_debug_view import draw_debug_overlay, resize_debug_image, should_quit_from_key
 
 
 def _intrinsics_to_camera_params(intrinsics):
@@ -43,6 +43,9 @@ def run(
     min_valid_frames,
     base_cache_items,
     show=False,
+    show_width=0,
+    show_height=0,
+    show_detect_every=1,
     frame_limit=None,
 ):
     """Run camera detection and respond to serial 6D pose sample queries."""
@@ -56,7 +59,12 @@ def run(
     serial_device = serial.Serial(serial_port, baudrate=baudrate, timeout=0)
     receive_buffer = ""
     handled_queries = 0
-    debug_state = {"base_ref_source": "none", "last_status": "waiting"}
+    debug_state = {
+        "base_ref_source": "none",
+        "last_status": "waiting",
+        "detections": [],
+        "frame_index": 0,
+    }
 
     camera.start()
     try:
@@ -77,6 +85,9 @@ def run(
                 np_module=np,
                 cv2_module=cv2,
                 debug_state=debug_state,
+                show_width=show_width,
+                show_height=show_height,
+                show_detect_every=show_detect_every,
             ):
                 break
 
@@ -120,14 +131,21 @@ def _update_debug_window(
     np_module,
     cv2_module,
     debug_state,
+    show_width,
+    show_height,
+    show_detect_every,
 ):
     color_frame, _depth_frame = camera.capture_aligned()
     color_bgr = np_module.asanyarray(color_frame.get_data()).copy()
-    detections = detector.detect(
-        color_bgr,
-        camera_params=camera_params,
-        tag_size_m=tag_size_m,
-    )
+    frame_index = int(debug_state.get("frame_index", 0))
+    if _should_detect_debug_frame(frame_index, show_detect_every):
+        debug_state["detections"] = detector.detect(
+            color_bgr,
+            camera_params=camera_params,
+            tag_size_m=tag_size_m,
+        )
+    detections = debug_state.get("detections", [])
+    debug_state["frame_index"] = frame_index + 1
     draw_debug_overlay(
         image_bgr=color_bgr,
         detections=detections,
@@ -135,6 +153,12 @@ def _update_debug_window(
         tool_tag_id=tool_tag_id,
         base_ref_source=debug_state.get("base_ref_source", "none"),
         last_status=debug_state.get("last_status", "waiting"),
+    )
+    color_bgr = resize_debug_image(
+        image_bgr=color_bgr,
+        width=show_width,
+        height=show_height,
+        cv2_module=cv2_module,
     )
     cv2_module.imshow("Sukinee AprilTag Debug", color_bgr)
     return should_quit_from_key(cv2_module.waitKey(1))
@@ -292,6 +316,11 @@ def _timestamp_now():
     return datetime.now().isoformat(timespec="milliseconds")
 
 
+def _should_detect_debug_frame(frame_index, show_detect_every):
+    interval = max(1, int(show_detect_every or 1))
+    return int(frame_index) % interval == 0
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--serial-port", default="/dev/ttyUSB0", help="串口设备路径")
@@ -303,6 +332,9 @@ def main():
     parser.add_argument("--min-valid-frames", type=int, default=5, help="最少有效 tool0 帧数")
     parser.add_argument("--base-cache-items", type=int, default=20, help="缓存的底座参考观测数量")
     parser.add_argument("--show", action="store_true", help="在 Jetson 屏幕显示 AprilTag 调试窗口")
+    parser.add_argument("--show-width", type=int, default=0, help="调试窗口显示宽度，0 表示使用原始宽度")
+    parser.add_argument("--show-height", type=int, default=0, help="调试窗口显示高度，0 表示按比例计算")
+    parser.add_argument("--show-detect-every", type=int, default=1, help="调试窗口每隔多少帧运行一次 AprilTag 检测")
     parser.add_argument("--frames", type=int, help="测试用：处理指定查询次数后退出")
     args = parser.parse_args()
 
@@ -316,6 +348,9 @@ def main():
         min_valid_frames=args.min_valid_frames,
         base_cache_items=args.base_cache_items,
         show=args.show,
+        show_width=args.show_width,
+        show_height=args.show_height,
+        show_detect_every=args.show_detect_every,
         frame_limit=args.frames,
     )
     return 0

@@ -20,8 +20,8 @@ from coordinate.pose_transform import (
 from apriltag.pose_cache import PoseCache
 from apriltag.pose_sample import BaseReferenceCache, robust_average_transforms
 from apriltag.pose_service import TagPoseService
-from tools.serve_tag1_pose_serial import _capture_pose_sample_json
-from tools.tag_debug_view import build_debug_overlay_items
+from tools.serve_tag1_pose_serial import _capture_pose_sample_json, _should_detect_debug_frame
+from tools.tag_debug_view import build_debug_overlay_items, resize_debug_image
 
 
 class AprilTagSerialPoseTests(unittest.TestCase):
@@ -282,6 +282,40 @@ class AprilTagSerialPoseTests(unittest.TestCase):
         self.assertEqual(items["tags"][1]["label"], "ID 1 tool0")
         self.assertEqual(items["tags"][0]["corners"], [(1, 2), (3, 4), (5, 6), (7, 8)])
 
+    def test_resizes_debug_image_to_requested_window_size(self):
+        image = FakeImage(width=640, height=480)
+        cv2_module = FakeCv2()
+
+        resized = resize_debug_image(
+            image_bgr=image,
+            width=960,
+            height=720,
+            cv2_module=cv2_module,
+        )
+
+        self.assertEqual(resized, "resized-image")
+        self.assertEqual(cv2_module.resize_calls, [(image, (960, 720))])
+
+    def test_resizes_debug_image_preserving_aspect_ratio(self):
+        image = FakeImage(width=640, height=480)
+        cv2_module = FakeCv2()
+
+        resize_debug_image(
+            image_bgr=image,
+            width=960,
+            height=0,
+            cv2_module=cv2_module,
+        )
+
+        self.assertEqual(cv2_module.resize_calls, [(image, (960, 720))])
+
+    def test_debug_detection_interval_can_skip_frames(self):
+        self.assertTrue(_should_detect_debug_frame(0, 3))
+        self.assertFalse(_should_detect_debug_frame(1, 3))
+        self.assertFalse(_should_detect_debug_frame(2, 3))
+        self.assertTrue(_should_detect_debug_frame(3, 3))
+        self.assertTrue(_should_detect_debug_frame(10, 0))
+
     def test_new_modules_are_python_36_compatible(self):
         for path in [
             "communication/tag_pose_protocol.py",
@@ -356,3 +390,17 @@ class FakeDetection:
     def __init__(self, tag_id, corners):
         self.tag_id = tag_id
         self.corners = corners
+
+
+class FakeImage:
+    def __init__(self, width, height):
+        self.shape = (height, width, 3)
+
+
+class FakeCv2:
+    def __init__(self):
+        self.resize_calls = []
+
+    def resize(self, image, size):
+        self.resize_calls.append((image, size))
+        return "resized-image"
