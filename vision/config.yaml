@@ -29,7 +29,7 @@ apriltag:
   family: tag36h11
   base_tag_id: 0
   tool_tag_id: 1
-  tag_size_mm: 60
+  tag_size_mm: 80
   max_pose_age_ms: 500
 
 logging:
