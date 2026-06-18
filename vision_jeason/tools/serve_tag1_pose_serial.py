@@ -139,11 +139,14 @@ def _update_debug_window(
     color_bgr = np_module.asanyarray(color_frame.get_data()).copy()
     frame_index = int(debug_state.get("frame_index", 0))
     if _should_detect_debug_frame(frame_index, show_detect_every):
-        debug_state["detections"] = detector.detect(
-            color_bgr,
-            camera_params=camera_params,
-            tag_size_m=tag_size_m,
-        )
+        try:
+            debug_state["detections"] = detector.detect(
+                color_bgr,
+                camera_params=camera_params,
+                tag_size_m=tag_size_m,
+            )
+        except Exception as exc:
+            debug_state["last_status"] = "debug detect skipped: {}".format(exc)
     detections = debug_state.get("detections", [])
     debug_state["frame_index"] = frame_index + 1
     draw_debug_overlay(
@@ -236,11 +239,15 @@ def _capture_pose_sample_json(
     for _index in range(sample_frames):
         color_frame, _depth_frame = camera.capture_aligned()
         color_bgr = np_module.asanyarray(color_frame.get_data())
-        detections = detector.detect_camera_to_tag(
-            color_bgr,
-            camera_params=camera_params,
-            tag_size_m=tag_size_m,
-        )
+        try:
+            detections = detector.detect_camera_to_tag(
+                color_bgr,
+                camera_params=camera_params,
+                tag_size_m=tag_size_m,
+            )
+        except Exception as exc:
+            print("AprilTag frame skipped: {}".format(exc))
+            continue
         base_ref_seen = base_ref_seen or base_tag_id in detections
         tool0_seen = tool0_seen or tool_tag_id in detections
 

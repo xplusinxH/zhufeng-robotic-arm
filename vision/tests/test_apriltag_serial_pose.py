@@ -263,6 +263,41 @@ class AprilTagSerialPoseTests(unittest.TestCase):
         self.assertFalse(payload["quality"]["base_ref_seen"])
         self.assertTrue(payload["quality"]["tool0_seen"])
 
+    def test_capture_sample_skips_apriltag_pose_solver_exceptions(self):
+        identity_rotation = [
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+        detector = FakeDetector(
+            [
+                RuntimeError("more than one new minima found"),
+                {
+                    0: make_transform(identity_rotation, (0.10, 0.00, 0.50)),
+                    1: make_transform(identity_rotation, (0.25, -0.05, 0.70)),
+                },
+            ]
+        )
+
+        response, status = _capture_pose_sample_json(
+            camera=FakeCamera(),
+            detector=detector,
+            camera_params=(1.0, 1.0, 0.0, 0.0),
+            tag_size_m=0.08,
+            base_tag_id=0,
+            tool_tag_id=1,
+            sample_frames=2,
+            min_valid_frames=1,
+            seq=4,
+            np_module=FakeNumpy(),
+            base_ref_cache=BaseReferenceCache(max_items=5),
+        )
+        payload = json.loads(response)
+
+        self.assertEqual(status, {"base_ref_source": "live", "last_status": "ok"})
+        self.assertEqual(payload["frame_count_used"], 1)
+        self.assertEqual(payload["position_m"], [0.15, -0.05, 0.2])
+
     def test_builds_debug_overlay_items_from_detections_and_status(self):
         detections = [
             FakeDetection(0, [(1, 2), (3, 4), (5, 6), (7, 8)]),
@@ -377,7 +412,10 @@ class FakeDetector:
         self._detections = list(detections)
 
     def detect_camera_to_tag(self, color_bgr, camera_params, tag_size_m):
-        return self._detections.pop(0)
+        result = self._detections.pop(0)
+        if isinstance(result, Exception):
+            raise result
+        return result
 
 
 class FakeNumpy:
