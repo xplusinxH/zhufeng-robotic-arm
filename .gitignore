@@ -12,3 +12,20 @@ prompt.txt
 # Python cache
 __pycache__/
 *.pyc
+
+# Local prompt / notes
+start.txt
+prompt*.txt
+sukinee_prompt*.md
+*提示词*
+
+# Logs
+*.log
+
+# Generated runtime artifacts
+trajectory_exec_reports/
+trajectories/
+
+# Python cache
+__pycache__/
+*.pyc
