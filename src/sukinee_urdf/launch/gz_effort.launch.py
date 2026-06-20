@@ -5,8 +5,9 @@ import xacro
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, TimerAction, SetEnvironmentVariable
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction, SetEnvironmentVariable
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
@@ -36,6 +37,7 @@ def generate_launch_description():
             'include_gz_plugin': 'true',
             'controllers_file': controllers_file,
             'world_z': '0.30',
+            'use_gazebo_gripper_controller': 'true',
         }
     ).toxml()
 
@@ -52,7 +54,7 @@ def generate_launch_description():
             )
         ),
         launch_arguments={
-            'gz_args': '-r empty.sdf'
+            'gz_args': LaunchConfiguration('gz_args')
         }.items()
     )
 
@@ -113,6 +115,11 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        DeclareLaunchArgument(
+            'gz_args',
+            default_value='-r empty.sdf',
+            description='Arguments passed to gz sim. Use "empty.sdf" to start paused.',
+        ),
         SetEnvironmentVariable(
             name='GZ_SIM_RESOURCE_PATH',
             value=gazebo_resource_path + ':' + os.environ.get('GZ_SIM_RESOURCE_PATH', '')

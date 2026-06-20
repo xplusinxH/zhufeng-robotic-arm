@@ -17,6 +17,55 @@
 - Mechanical zero position has NOT been verified yet.
 - Joint software limits have NOT been verified against the real robot yet.
 - Real motors must NOT be controlled by MoveIt at this stage.
+## Gate2 Read-only Communication Status
+
+Latest result:
+
+- Joint1-Joint7 are all online.
+- `read_all_motors_monitor.py` runs with `SKIP_MOTOR_IDS = set()` / skipped motor list empty.
+- Each cycle reads 7 motors × 4 parameters = 28 read-only parameter reads.
+- Observed 5 cycles: OK=140, TIMEOUT=0, READ_FAIL=0, SEND_ERROR=0, PARSE_ERROR=0.
+- Joint5 has recovered and now returns pos / iqf / vel / vbus.
+- No enable command sent.
+- No torque/current/position/velocity command sent.
+- No zero setting command sent.
+- No MoveIt real execution.
+
+Result: Gate2 read-only communication validation is initially PASS.
+If the 5-minute monitor also has no errors, record Gate2 as full PASS.
+
+## Gate3A Read-only Feedback Sign Mapping
+
+This section records feedback sign only.
+It does not define command sign, URDF sign, zero offset, or real control direction.
+
+| Joint | Motor Type | CAN_ID | Manual Motion | Feedback pos result | Gate3A Result |
+|------|------------|--------|---------------|---------------------|---------------|
+| Joint1 | RS00 | 1 | CCW | decreases | PASS |
+| Joint1 | RS00 | 1 | CW | increases | PASS |
+| Joint2 | RS00 | 2 | lift | decreases | PASS |
+| Joint2 | RS00 | 2 | lower | increases | PASS |
+| Joint3 | RS00 | 3 | lift | decreases | PASS |
+| Joint3 | RS00 | 3 | lower | increases | PASS |
+| Joint4 | RS05 | 4 | lift | decreases | PASS |
+| Joint4 | RS05 | 4 | lower | increases | PASS |
+| Joint5 | RS05 | 5 | left rotation | increases | PASS |
+| Joint5 | RS05 | 5 | right rotation | decreases | PASS |
+| Joint6 | RS05 | 6 | CCW | increases | PASS |
+| Joint6 | RS05 | 6 | CW | decreases | PASS |
+| Joint7 | RS05 | 7 | close | decreases | PASS |
+| Joint7 | RS05 | 7 | open | increases | PASS |
+
+Gate3A result: 7/7 complete.
+
+Safety note:
+
+- Feedback sign mapping was read-only.
+- No enable command was sent.
+- No torque/current/position/velocity command was sent.
+- No zero setting command was sent.
+- MoveIt was not connected to the real robot.
+- These results must not be used as command sign mapping.
 
 ## Safety Rules Before Real Motor Motion
 

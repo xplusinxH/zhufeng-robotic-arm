@@ -1,0 +1,16 @@
+{
+  "description": "Main inertia correction disabled after replacing URDF with sukinee_2urdf. Use raw URDF inertials first.",
+  "enabled": false,
+  "joint_body_mass_scale": {},
+  "extra_payload": {
+    "enabled": false,
+    "parent_joint": "Joint6",
+    "mass_kg": 0.0,
+    "local_com_xyz_m": [0.0, 0.0, 0.0]
+  },
+  "safety": {
+    "preview_first": true,
+    "do_not_apply_to_joint1": true,
+    "do_not_apply_to_joint7": true
+  }
+}
