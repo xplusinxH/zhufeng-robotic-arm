@@ -1,0 +1,88 @@
+{
+  "description": "Software-only motor feedback position to URDF joint angle calibration. This does not set motor zero and does not change motor parameters.",
+  "formula": "q_urdf[j] = sign[j] * (motor_pos[j] - motor_pos_at_urdf_zero[j])",
+  "joint_order": [
+    "Joint1",
+    "Joint2",
+    "Joint3",
+    "Joint4",
+    "Joint5",
+    "Joint6"
+  ],
+  "motor_to_urdf_sign": {
+    "Joint1": 1.0,
+    "Joint2": -1.0,
+    "Joint3": 1.0,
+    "Joint4": 1.0,
+    "Joint5": 1.0,
+    "Joint6": 1.0
+  },
+  "calibrated_motor_pos": {
+    "Joint1": 4.912995338439941,
+    "Joint2": 6.166296005249023,
+    "Joint3": 2.3391292095184326,
+    "Joint4": 1.1148567199707031,
+    "Joint5": 3.0190227031707764,
+    "Joint6": 3.3239378929138184
+  },
+  "q_init_urdf": {
+    "Joint1": 0.236247768,
+    "Joint2": -0.12716,
+    "Joint3": 0.080816,
+    "Joint4": 0.03376,
+    "Joint5": 0.0,
+    "Joint6": 0.42084
+  },
+  "motor_pos_at_urdf_zero": {
+    "Joint1": 4.662481439806739,
+    "Joint2": 6.046383936545391,
+    "Joint3": 2.247022187721893,
+    "Joint4": 1.0146128325557158,
+    "Joint5": 3.0015087922122876,
+    "Joint6": 2.880634513317036
+  },
+  "created_at_unix_time": 1781186917.9437928,
+  "motor_pos_at_urdf_zero_before_gate5": {
+    "Joint1": 4.676747570439941,
+    "Joint2": 6.0391360052490235,
+    "Joint3": 2.2583132095184326,
+    "Joint4": 1.0810967199707031,
+    "Joint5": 3.0190227031707764,
+    "Joint6": 2.9030978929138183
+  },
+  "gate5_calibration_metadata": {
+    "created_at_utc": "2026-06-19T08:07:23.541+00:00",
+    "script": "sukinee_optimize_zero_offsets_tooltag_base_ref.py",
+    "source_offset_file": "/home/zzj/sukinee_ws/sukinee_motor_to_urdf_offsets.json",
+    "vision_samples": "/home/zzj/sukinee_ws/vision_calibration/data/run_100_20260619_012357/vision_samples.jsonl",
+    "robot_samples": "/home/zzj/sukinee_ws/vision_calibration/data/run_100_20260619_012357/robot_samples.jsonl",
+    "urdf": "/home/zzj/sukinee_ws/src/sukinee_urdf/urdf/sukinee_urdf.urdf",
+    "sample_count": 98,
+    "excluded_sample_ids": [
+      "P0021",
+      "P0008"
+    ],
+    "joint_delta_sigma": {
+      "Joint2": 0.01
+    },
+    "delta_prior_enabled": true,
+    "configured_tag_size_m": 0.08,
+    "measured_tag_size_m": 0.077,
+    "vision_translation_scale": 0.9625,
+    "delta_q_rad": {
+      "Joint1": 0.014266130633202156,
+      "Joint2": 0.007247931296367334,
+      "Joint3": 0.011291021796539596,
+      "Joint4": 0.06648388741498733,
+      "Joint5": 0.017513910958488636,
+      "Joint6": 0.022463379596782268
+    },
+    "formula": "zero_new[j] = zero_old[j] - sign[j] * delta_q[j]",
+    "safety": {
+      "software_only": true,
+      "type6_set_zero": false,
+      "save_motor_parameters": false,
+      "moveit_real_execution": false
+    }
+  }
+}
