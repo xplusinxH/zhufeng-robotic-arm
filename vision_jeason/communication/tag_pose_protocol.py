@@ -1,4 +1,12 @@
-"""AprilTag end-effector pose serial protocol."""
+"""AprilTag 末端 6D 位姿串口协议。
+
+主协议命令：
+- 电脑端发送 ``@GET_TAG_POSE#``。
+- Jetson 采样多帧 AprilTag，返回一行 ``sukinee_tag_pose_v1`` JSON。
+
+协议输出的 ``position_m`` 使用米，``orientation_xyzw`` 使用 XYZW 四元数。
+旧的 ``@GET_TOOL#`` 三坐标协议仅保留为历史调试兼容。
+"""
 
 import json
 from typing import Optional, Sequence, Tuple
@@ -11,17 +19,17 @@ PROTOCOL_NAME = "sukinee_tag_pose_v1"
 
 
 def is_get_tool_command(message: str) -> bool:
-    """Return whether a serial line is the tool-coordinate query command."""
+    """判断是否为旧版工具坐标查询命令。"""
     return message.strip() == GET_TOOL_COMMAND
 
 
 def is_get_tag_pose_command(message: str) -> bool:
-    """Return whether a serial line asks for a 6D tag pose sample."""
+    """判断是否为新版 6D 位姿采样命令。"""
     return message.strip() == GET_TAG_POSE_COMMAND
 
 
 def format_tag_pose(position_m: Tuple[float, float, float], age_ms: int) -> str:
-    """Format tag1-in-tag0 translation as millimeters."""
+    """按旧协议格式化 tag1 相对 tag0 平移，输出单位毫米。"""
     x_m, y_m, z_m = position_m
     return "@TOOL,{:.1f},{:.1f},{:.1f},{}#".format(
         x_m * 1000.0,
@@ -32,12 +40,12 @@ def format_tag_pose(position_m: Tuple[float, float, float], age_ms: int) -> str:
 
 
 def format_no_tag() -> str:
-    """Return the no-valid-AprilTag-pose frame."""
+    """返回旧协议的无有效 tag 响应。"""
     return "@NO_TAG#"
 
 
 def format_error(message: str) -> str:
-    """Return an ASCII-safe error frame."""
+    """返回 ASCII 安全的错误帧，避免破坏串口帧头帧尾。"""
     safe_message = str(message).replace(",", " ").replace("#", " ").replace("@", " ")
     return "@ERR,{}#".format(safe_message.strip())
 
@@ -60,7 +68,7 @@ def format_pose_sample(
     tag_tool0_id: int = 1,
     crc32: Optional[str] = None,
 ) -> str:
-    """Format one valid 6D pose sample as a single JSON line."""
+    """将有效 6D 位姿样本格式化为单行 JSON。"""
     position_m, orientation_xyzw = transform_pose_xyzw(transform)
     payload = _base_payload(
         sample_id,
@@ -100,7 +108,7 @@ def format_invalid_pose_sample(
     tag_tool0_id: int = 1,
     crc32: Optional[str] = None,
 ) -> str:
-    """Format an invalid sample as JSON with explicit quality flags."""
+    """将无效采样格式化为 JSON，并明确质量状态。"""
     payload = _base_payload(
         sample_id,
         seq,
@@ -136,6 +144,7 @@ def _base_payload(
     tag_tool0_id,
     crc32,
 ):
+    """构造协议公共字段。"""
     return {
         "protocol": PROTOCOL_NAME,
         "sample_id": str(sample_id),
@@ -160,6 +169,7 @@ def _quality_payload(
     decision_margin_min,
     hamming_max,
 ):
+    """构造质量字段，供电脑端判断本次样本是否可用于标定。"""
     return {
         "both_tags_seen": bool(tool0_seen and base_ref_source in ("live", "cached", "mixed")),
         "base_ref_seen": bool(base_ref_seen),
@@ -172,8 +182,10 @@ def _quality_payload(
 
 
 def _round_list(values):
+    """限制浮点输出长度，减少串口日志噪音。"""
     return [round(float(value), 10) for value in values]
 
 
 def _json_line(payload):
+    """生成单行 JSON，便于电脑端按换行读取。"""
     return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))

@@ -1,4 +1,8 @@
-"""在 Jetson 上检查 RealSense 彩色帧、对齐深度帧和中心点深度。"""
+"""在 Jetson 上检查 RealSense 彩色帧、对齐深度帧和中心点深度。
+
+这是最小相机冒烟测试：不显示窗口，只持续打印分辨率和中心点深度。
+适合 SSH 终端、无桌面环境或十分钟稳定性测试。
+"""
 
 import argparse
 import sys
@@ -12,7 +16,11 @@ from camera.realsense_camera import RealSenseCamera
 
 
 def run(frame_limit=None):
-    """持续打印对齐帧信息；frame_limit 用于有限次冒烟测试。"""
+    """持续打印对齐帧信息。
+
+    ``frame_limit`` 用于自动化测试或短时间冒烟测试；为 ``None`` 时持续运行，
+    直到用户按 Ctrl+C。
+    """
     camera = RealSenseCamera()
     frame_number = 0
     camera.start()
@@ -39,6 +47,7 @@ def run(frame_limit=None):
 
 
 def main():
+    """命令行入口。"""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--frames", type=int, help="采集指定帧数后退出")
     args = parser.parse_args()

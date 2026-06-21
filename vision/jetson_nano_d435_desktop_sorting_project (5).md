@@ -2,6 +2,8 @@
 
 > **项目定位**：本项目面向桌面整理任务，用户负责视觉端。Jetson Nano 采集 RealSense D435 的 RGB-D 数据，完成桌面物体检测、三维坐标解算、坐标系转换，并通过串口将目标类别、坐标和状态发送至另一块主控板。机械臂运动控制、轨迹规划和抓取执行不在本项目范围内。
 
+> **2026-06-20 修订**：D435 已确认安装在机械臂末端执行器上，本项目按 eye-in-hand 框架执行。桌面平面使用机械臂基坐标系先验 `Z_base = 0`，不再执行相机坐标系 `table_plane.yaml` 标定；Jetson 运行时接收串口发送的 `T_base_tool`，并与手眼标定结果 `T_tool_camera` 组合得到 `T_base_camera`。
+
 ---
 
 ## 0. 文档维护规则
@@ -208,15 +210,13 @@ vision_project/
 │
 ├── calibration/
 │   ├── camera_intrinsic.json  # 相机内参记录
-│   ├── extrinsic_se3.yaml     # 相机到工作坐标系 SE(3) 参数
+│   ├── tool_camera.yaml       # 手眼标定结果 T_tool_camera
 │   ├── sim3.yaml              # 可选 Sim(3) 参数
-│   ├── table_plane.yaml       # 桌面平面参数
 │   ├── calibrate_intrinsic.py # 内参检查脚本
-│   ├── calibrate_extrinsic.py # 外参标定脚本
-│   └── calibrate_table.py     # 桌面平面标定脚本
+│   └── calibrate_extrinsic.py # 手眼标定/外参检查脚本
 │
 ├── perception/
-│   ├── table_segment.py       # 桌面平面检测与去除
+│   ├── table_segment.py       # 基坐标系高度过滤
 │   ├── object_cluster.py      # 点云/深度聚类
 │   ├── detector_light.py      # YOLOv5n / SSD / MobileNet 等轻量识别
 │   └── object_fusion.py       # 几何候选与识别结果融合
@@ -376,7 +376,7 @@ ax + by + cz + d = 0
 ### 输出文件
 
 ```text
-calibration/table_plane.yaml
+calibration/tool_camera.yaml
 ```
 
 ### 示例内容
@@ -614,7 +614,8 @@ align: depth to color
 ```text
 对齐后的 depth
 相机内参
-table_plane.yaml
+T_base_tool
+T_tool_camera
 ```
 
 输出：
@@ -993,8 +994,7 @@ python3 --version
 
 ```text
 camera_intrinsic.json
-table_plane.yaml
-extrinsic_se3.yaml
+tool_camera.yaml
 ```
 
 验收：

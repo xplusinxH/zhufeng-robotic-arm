@@ -1,4 +1,8 @@
-"""保存 RGB-Depth 对齐验证数据。"""
+"""保存 RGB-Depth 对齐验证数据。
+
+该模块只负责文件目录和 JSON 记录，不依赖 OpenCV 或 RealSense。
+实时工具采集到图像后调用这里保存测量结果，便于 PC 端单元测试。
+"""
 
 import json
 from pathlib import Path
@@ -12,7 +16,11 @@ def create_capture_directory(root, timestamp):
 
 
 def save_measurement(output_path, pixel, depth_m, camera_point):
-    """保存点击像素、深度和相机三维坐标。"""
+    """保存点击像素、深度和相机三维坐标。
+
+    ``camera_point`` 为 ``None`` 时表示该像素没有有效深度，JSON 中会写入
+    明确状态，避免后续复盘时误判为程序没有保存成功。
+    """
     record = {
         "status": "有效" if camera_point is not None else "无有效深度",
         "pixel": {"u": pixel[0], "v": pixel[1]},

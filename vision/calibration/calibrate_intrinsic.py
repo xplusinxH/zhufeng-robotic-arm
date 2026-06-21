@@ -1,4 +1,8 @@
-"""在 Jetson 上读取并保存 D435 当前流配置的内参。"""
+"""在 Jetson 上读取并保存 D435 当前流配置的内参。
+
+输出文件默认写入 ``/etc/zhufeng-vision/calibration/camera_intrinsic.json``。
+该脚本必须在 D435 已连接、RealSense SDK 可用的 Jetson 真机上运行。
+"""
 
 import argparse
 from datetime import datetime
@@ -17,6 +21,7 @@ DEFAULT_OUTPUT = Path("/etc/zhufeng-vision/calibration/camera_intrinsic.json")
 
 
 def main():
+    """命令行入口：启动相机、读取内参、保存 JSON 后释放相机。"""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args()

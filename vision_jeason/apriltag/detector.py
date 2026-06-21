@@ -1,4 +1,9 @@
-"""AprilTag detector adapter using pupil-apriltags."""
+"""AprilTag 检测器适配层。
+
+本模块把 ``pupil_apriltags`` 的检测结果转换为项目统一使用的
+``T_camera_tag`` 齐次变换矩阵。输入图像使用 OpenCV BGR 格式，
+tag 尺寸单位为米。
+"""
 
 from typing import Dict, Tuple
 
@@ -6,7 +11,10 @@ from coordinate.pose_transform import make_transform
 
 
 class AprilTagPoseDetector:
-    """Detect AprilTags and return camera-to-tag transforms."""
+    """AprilTag 位姿检测器。
+
+    默认使用 ``tag25h9``，与当前机械臂临时标定任务的打印 tag 保持一致。
+    """
 
     def __init__(self, family: str = "tag25h9", nthreads: int = 2) -> None:
         try:
@@ -32,7 +40,10 @@ class AprilTagPoseDetector:
         camera_params: Tuple[float, float, float, float],
         tag_size_m: float,
     ) -> Dict[int, list]:
-        """Return ``{tag_id: T_camera_tag}`` for all detected tags."""
+        """检测图像中的 tag，并返回 ``{tag_id: T_camera_tag}``。
+
+        ``T_camera_tag`` 表示 tag 坐标系在相机坐标系下的位姿，平移单位为米。
+        """
         detections = self.detect(color_bgr, camera_params, tag_size_m)
 
         transforms = {}
@@ -55,7 +66,11 @@ class AprilTagPoseDetector:
         camera_params: Tuple[float, float, float, float],
         tag_size_m: float,
     ):
-        """Return raw pupil-apriltags detections with pose estimates."""
+        """返回 ``pupil_apriltags`` 原始检测对象。
+
+        调试窗口需要角点和 ID，因此保留该低层接口；正式计算优先使用
+        :meth:`detect_camera_to_tag`。
+        """
         import cv2
 
         gray = cv2.cvtColor(color_bgr, cv2.COLOR_BGR2GRAY)

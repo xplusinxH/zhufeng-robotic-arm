@@ -1,4 +1,12 @@
-"""Small rigid-transform helpers for AprilTag pose calculations."""
+"""AprilTag 与机械臂临时标定使用的刚体变换工具。
+
+坐标约定：
+已有 AprilTag 检测结果为 ``T_camera_tag``，即 tag 坐标系在相机坐标系下的
+位姿。若要计算 ``tag_base_ref -> tag_tool0``，使用
+``inverse(T_camera_base) * T_camera_tool``。
+
+长度单位保持输入单位不变；当前项目默认使用米，串口旧协议输出时再转毫米。
+"""
 
 import math
 from typing import Iterable, List, Sequence, Tuple
@@ -8,7 +16,7 @@ Vector3 = Tuple[float, float, float]
 
 
 def make_transform(rotation: Sequence[Sequence[float]], translation: Iterable[float]) -> Matrix4:
-    """Build a 4x4 rigid transform from a 3x3 rotation and XYZ translation."""
+    """由 3x3 旋转矩阵和 XYZ 平移构造 4x4 齐次变换矩阵。"""
     tx, ty, tz = [float(value) for value in translation]
     return [
         [float(rotation[0][0]), float(rotation[0][1]), float(rotation[0][2]), tx],
@@ -19,7 +27,7 @@ def make_transform(rotation: Sequence[Sequence[float]], translation: Iterable[fl
 
 
 def invert_transform(transform: Sequence[Sequence[float]]) -> Matrix4:
-    """Invert a rigid 4x4 transform."""
+    """求刚体 4x4 变换矩阵的逆矩阵。"""
     rotation_t = [
         [float(transform[0][0]), float(transform[1][0]), float(transform[2][0])],
         [float(transform[0][1]), float(transform[1][1]), float(transform[2][1])],
@@ -38,7 +46,7 @@ def invert_transform(transform: Sequence[Sequence[float]]) -> Matrix4:
 
 
 def multiply_transform(left: Sequence[Sequence[float]], right: Sequence[Sequence[float]]) -> Matrix4:
-    """Multiply two 4x4 transforms."""
+    """矩阵乘法：返回 ``left * right``。"""
     return [
         [
             sum(float(left[row][index]) * float(right[index][col]) for index in range(4))
@@ -52,12 +60,12 @@ def relative_transform(
     reference_in_camera: Sequence[Sequence[float]],
     target_in_camera: Sequence[Sequence[float]],
 ) -> Matrix4:
-    """Return target pose expressed in the reference tag frame."""
+    """将目标 tag 位姿转换到参考 tag 坐标系下。"""
     return multiply_transform(invert_transform(reference_in_camera), target_in_camera)
 
 
 def transform_translation(transform: Sequence[Sequence[float]]) -> Vector3:
-    """Extract XYZ translation from a 4x4 transform in meters."""
+    """从 4x4 变换矩阵中提取 XYZ 平移，单位沿用输入矩阵。"""
     return (
         float(transform[0][3]),
         float(transform[1][3]),
@@ -66,13 +74,13 @@ def transform_translation(transform: Sequence[Sequence[float]]) -> Vector3:
 
 
 def transform_translation_mm(transform: Sequence[Sequence[float]]) -> Vector3:
-    """Extract XYZ translation from a 4x4 transform in millimeters."""
+    """从 4x4 变换矩阵中提取 XYZ 平移并转换为毫米。"""
     x_m, y_m, z_m = transform_translation(transform)
     return (round(x_m * 1000.0, 6), round(y_m * 1000.0, 6), round(z_m * 1000.0, 6))
 
 
 def transform_rotation(transform: Sequence[Sequence[float]]) -> List[List[float]]:
-    """Extract a 3x3 rotation matrix from a 4x4 transform."""
+    """从 4x4 变换矩阵中提取 3x3 旋转矩阵。"""
     return [
         [float(transform[0][0]), float(transform[0][1]), float(transform[0][2])],
         [float(transform[1][0]), float(transform[1][1]), float(transform[1][2])],
@@ -81,7 +89,7 @@ def transform_rotation(transform: Sequence[Sequence[float]]) -> List[List[float]
 
 
 def rotation_matrix_to_quaternion_xyzw(rotation: Sequence[Sequence[float]]) -> Tuple[float, float, float, float]:
-    """Convert a 3x3 rotation matrix to an ``x, y, z, w`` quaternion."""
+    """将 3x3 旋转矩阵转换为 ``x, y, z, w`` 顺序的四元数。"""
     r00 = float(rotation[0][0])
     r01 = float(rotation[0][1])
     r02 = float(rotation[0][2])
@@ -93,6 +101,7 @@ def rotation_matrix_to_quaternion_xyzw(rotation: Sequence[Sequence[float]]) -> T
     r22 = float(rotation[2][2])
     trace = r00 + r11 + r22
 
+    # 按矩阵迹和最大对角元素分支，避免接近 180 度旋转时数值不稳定。
     if trace > 0.0:
         scale = math.sqrt(trace + 1.0) * 2.0
         qw = 0.25 * scale
@@ -122,7 +131,7 @@ def rotation_matrix_to_quaternion_xyzw(rotation: Sequence[Sequence[float]]) -> T
 
 
 def normalize_quaternion_xyzw(quaternion: Sequence[float]) -> Tuple[float, float, float, float]:
-    """Normalize an ``x, y, z, w`` quaternion."""
+    """归一化 ``x, y, z, w`` 顺序的四元数。"""
     qx, qy, qz, qw = [float(value) for value in quaternion]
     norm = math.sqrt(qx * qx + qy * qy + qz * qz + qw * qw)
     if norm == 0.0:
@@ -131,7 +140,11 @@ def normalize_quaternion_xyzw(quaternion: Sequence[float]) -> Tuple[float, float
 
 
 def average_quaternions_xyzw(quaternions: Sequence[Sequence[float]]) -> Tuple[float, float, float, float]:
-    """Average quaternions after aligning them to the same hemisphere."""
+    """对多个四元数做平均。
+
+    四元数 ``q`` 和 ``-q`` 表示同一个姿态。平均前先统一到同一半球，
+    避免方向相同但符号相反的样本相互抵消。
+    """
     if not quaternions:
         return (0.0, 0.0, 0.0, 1.0)
     reference = normalize_quaternion_xyzw(quaternions[0])
@@ -147,7 +160,7 @@ def average_quaternions_xyzw(quaternions: Sequence[Sequence[float]]) -> Tuple[fl
 
 
 def quaternion_xyzw_to_rotation_matrix(quaternion: Sequence[float]) -> List[List[float]]:
-    """Convert an ``x, y, z, w`` quaternion to a 3x3 rotation matrix."""
+    """将 ``x, y, z, w`` 顺序四元数转换为 3x3 旋转矩阵。"""
     x, y, z, w = normalize_quaternion_xyzw(quaternion)
     xx = x * x
     yy = y * y
@@ -166,5 +179,5 @@ def quaternion_xyzw_to_rotation_matrix(quaternion: Sequence[float]) -> List[List
 
 
 def transform_pose_xyzw(transform: Sequence[Sequence[float]]) -> Tuple[Vector3, Tuple[float, float, float, float]]:
-    """Extract XYZ position and XYZW quaternion from a 4x4 transform."""
+    """从 4x4 变换矩阵中提取位置和 XYZW 四元数姿态。"""
     return transform_translation(transform), rotation_matrix_to_quaternion_xyzw(transform_rotation(transform))

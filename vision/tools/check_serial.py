@@ -1,1 +1,5 @@
-"""Check serial device visibility and basic write capability."""
+"""检查串口设备可见性和基础写入能力。
+
+后续桌面整理主流程会通过串口向下位机发送目标坐标。本工具用于现场先确认
+串口设备路径、权限和波特率配置是否可用。
+"""

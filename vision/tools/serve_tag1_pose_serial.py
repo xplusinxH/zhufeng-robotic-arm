@@ -1,4 +1,10 @@
-"""Serve AprilTag 6D pose samples over Jetson serial."""
+"""通过 Jetson 串口提供 AprilTag 6D 位姿采样服务。
+
+运行环境：Jetson Nano + RealSense D435 + ``pupil_apriltags``。
+收到 ``@GET_TAG_POSE#`` 后，程序连续采样多帧，计算
+``tag_base_ref -> tag_tool0``，再返回一行 JSON。程序不控制机械臂、
+不访问 CAN，也不写入电机参数。
+"""
 
 import argparse
 from datetime import datetime
@@ -25,6 +31,7 @@ from tools.tag_debug_view import draw_debug_overlay, resize_debug_image, should_
 
 
 def _intrinsics_to_camera_params(intrinsics):
+    """把 RealSense 内参对象转换为 AprilTag 求解器需要的参数顺序。"""
     return (
         float(intrinsics.fx),
         float(intrinsics.fy),
@@ -48,7 +55,10 @@ def run(
     show_detect_every=1,
     frame_limit=None,
 ):
-    """Run camera detection and respond to serial 6D pose sample queries."""
+    """运行串口服务主循环。
+
+    ``frame_limit`` 仅用于测试；现场运行时保持 ``None``，直到用户终止。
+    """
     import cv2
     import numpy as np
     import serial
@@ -135,6 +145,11 @@ def _update_debug_window(
     show_height,
     show_detect_every,
 ):
+    """刷新调试窗口。
+
+    调试窗口只用于现场观察，不参与正式串口采样结果；为了降低负载，
+    可通过 ``show_detect_every`` 降低调试检测频率。
+    """
     color_frame, _depth_frame = camera.capture_aligned()
     color_bgr = np_module.asanyarray(color_frame.get_data()).copy()
     frame_index = int(debug_state.get("frame_index", 0))
@@ -183,6 +198,7 @@ def _handle_serial_queries(
     base_ref_cache,
     debug_state,
 ):
+    """读取串口缓冲区并处理完整命令帧。"""
     data = serial_device.read(256)
     if data:
         receive_buffer += data.decode("ascii", "ignore")
@@ -230,6 +246,13 @@ def _capture_pose_sample_json(
     np_module,
     base_ref_cache,
 ):
+    """采集一个 6D 位姿样本并返回 JSON 字符串。
+
+    采样策略：
+    - 看到底座 tag 时更新底座参考缓存。
+    - 看不到底座 tag 但缓存可用时，使用缓存继续计算末端位姿。
+    - 有效帧不足时仍返回 JSON，但 ``position_m`` 和 ``orientation_xyzw`` 为 ``null``。
+    """
     valid_relative_transforms = []
     base_ref_seen = False
     tool0_seen = False
@@ -251,6 +274,7 @@ def _capture_pose_sample_json(
         base_ref_seen = base_ref_seen or base_tag_id in detections
         tool0_seen = tool0_seen or tool_tag_id in detections
 
+        # 底座 tag 通常固定在机械臂底座附近，缓存它可以降低遮挡造成的采样失败率。
         if base_tag_id in detections:
             base_ref_cache.add(detections[base_tag_id])
 
@@ -310,6 +334,7 @@ def _capture_pose_sample_json(
 
 
 def _base_ref_source(used_live_base, used_cached_base):
+    """描述本次样本使用的底座参考来源。"""
     if used_live_base and used_cached_base:
         return "mixed"
     if used_live_base:
@@ -320,10 +345,12 @@ def _base_ref_source(used_live_base, used_cached_base):
 
 
 def _timestamp_now():
+    """生成 Jetson 本地时间戳。"""
     return datetime.now().isoformat(timespec="milliseconds")
 
 
 def _should_detect_debug_frame(frame_index, show_detect_every):
+    """判断调试窗口当前帧是否需要运行 AprilTag 检测。"""
     interval = max(1, int(show_detect_every or 1))
     return int(frame_index) % interval == 0
 

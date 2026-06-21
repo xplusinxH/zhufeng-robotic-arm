@@ -1,0 +1,8 @@
+# 手眼标定示例文件，不是实机标定结果。
+# 真实手眼标定完成后，复制为 tool_camera.yaml 并替换数值。
+schema: zhufeng_tool_camera_v1
+unit: meter
+translation_m: [0.0, 0.0, 0.05]
+orientation_xyzw: [0.0, 0.0, 0.0, 1.0]
+captured_at: example
+source: placeholder
