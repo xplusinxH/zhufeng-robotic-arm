@@ -1,0 +1,58 @@
+description: "Offline safety limits for Sukinee MoveIt-exported arm trajectories. Planning/export check only; not a real-motor execution limit file."
+
+expected_joints:
+  - Joint1
+  - Joint2
+  - Joint3
+  - Joint4
+  - Joint5
+  - Joint6
+
+forbidden_joints:
+  - Joint7
+
+position_limits_rad:
+  Joint1:
+    lower: -0.78
+    upper: 0.78
+  Joint2:
+    lower: -0.3
+    upper: 2.6
+  Joint3:
+    lower: -2.36
+    upper: 0.3
+  Joint4:
+    lower: -0.8
+    upper: 0.8
+  Joint5:
+    lower: -0.8
+    upper: 0.8
+  Joint6:
+    lower: -2.1
+    upper: 2.1
+
+max_joint_step_rad: 0.05
+min_duration_sec: 1.0
+
+max_abs_velocity_rad_s:
+  Joint1: 1.0
+  Joint2: 1.0
+  Joint3: 1.0
+  Joint4: 1.0
+  Joint5: 1.0
+  Joint6: 1.0
+
+max_abs_acceleration_rad_s2:
+  Joint1: 1.0
+  Joint2: 0.8
+  Joint3: 0.8
+  Joint4: 1.0
+  Joint5: 1.2
+  Joint6: 1.2
+
+safety_boundary:
+  socketcan: false
+  type1_torque_ff: false
+  type4_disable: false
+  real_motor_command: false
+  moveit_real_execution: false

@@ -117,7 +117,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             "print_every",
-            default_value="50",
+            default_value="100",
         ),
         DeclareLaunchArgument(
             "type1_delay",

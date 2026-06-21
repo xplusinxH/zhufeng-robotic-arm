@@ -14,3 +14,10 @@ endif()
 
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 install(FILES .setup_assistant DESTINATION share/${PROJECT_NAME})
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/scripts")
+  install(
+    DIRECTORY scripts
+    DESTINATION share/${PROJECT_NAME}
+    USE_SOURCE_PERMISSIONS)
+endif()

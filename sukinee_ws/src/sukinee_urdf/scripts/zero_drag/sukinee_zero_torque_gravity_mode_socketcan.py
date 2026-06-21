@@ -234,6 +234,32 @@ def load_gravity_config(path: Path):
         "raw": software_damping_raw,
     }
 
+    thermal_safety_raw = dict(payload.get("thermal_safety", {}))
+    thermal_safety = {
+        "enabled": bool(thermal_safety_raw.get("enabled", False)),
+        "monitor_motor_ids": [int(x) for x in thermal_safety_raw.get("monitor_motor_ids", [])],
+        "stop_temp_c": float(thermal_safety_raw.get("stop_temp_c", 85.0)),
+        "max_feedback_age_sec": float(thermal_safety_raw.get("max_feedback_age_sec", 0.5)),
+        "require_feedback_after_sec": float(thermal_safety_raw.get("require_feedback_after_sec", 3.0)),
+        "consecutive_over_limit": int(thermal_safety_raw.get("consecutive_over_limit", 1)),
+        "raw": thermal_safety_raw,
+    }
+
+    if thermal_safety["enabled"]:
+        if not thermal_safety["monitor_motor_ids"]:
+            raise RuntimeError("thermal_safety.monitor_motor_ids must not be empty when enabled")
+        for motor_id in thermal_safety["monitor_motor_ids"]:
+            if motor_id not in ALL_MOTOR_IDS:
+                raise RuntimeError(f"thermal_safety.monitor_motor_ids contains invalid Joint{motor_id}")
+        if thermal_safety["stop_temp_c"] <= 0.0 or thermal_safety["stop_temp_c"] > 145.0:
+            raise RuntimeError("thermal_safety.stop_temp_c must be >0 and <=145 Celsius")
+        if thermal_safety["max_feedback_age_sec"] <= 0.0 or thermal_safety["max_feedback_age_sec"] > 10.0:
+            raise RuntimeError("thermal_safety.max_feedback_age_sec must be >0 and <=10 seconds")
+        if thermal_safety["require_feedback_after_sec"] < 0.0 or thermal_safety["require_feedback_after_sec"] > 30.0:
+            raise RuntimeError("thermal_safety.require_feedback_after_sec must be between 0 and 30 seconds")
+        if thermal_safety["consecutive_over_limit"] < 1 or thermal_safety["consecutive_over_limit"] > 100:
+            raise RuntimeError("thermal_safety.consecutive_over_limit must be between 1 and 100")
+
     return {
         "target_joints": target_joints,
         "gravity_feedforward_ratio": gravity_feedforward_ratio,
@@ -242,6 +268,7 @@ def load_gravity_config(path: Path):
         "max_abs_torque": max_abs_torque,
         "torque_slew_rate": torque_slew_rate,
         "software_damping": software_damping,
+        "thermal_safety": thermal_safety,
         "joint2_anti_j3_coupling_hold": joint2_anti_j3_hold,
         "joint4_angle_dependent_gravity_scale": joint4_angle_scale,
         "startup_ramp_sec": startup_ramp_sec,
@@ -610,6 +637,55 @@ def feedback_ok(values, statuses) -> Tuple[bool, str]:
     return True, "OK"
 
 
+def check_thermal_safety(driver: SukineeSocketCANDriver, thermal_safety, mode_elapsed: float, over_count):
+    """Raise RuntimeError if monitored motor temperature exceeds stop_temp_c.
+
+    Temperature source: latest cached Type2 feedback.
+    RobStride private-protocol Type2 feedback defines Byte6~7 as Temp(Celsius) * 10.
+    """
+    if not thermal_safety.get("enabled", False):
+        return {}
+
+    monitor_motor_ids = [int(x) for x in thermal_safety["monitor_motor_ids"]]
+    stop_temp_c = float(thermal_safety["stop_temp_c"])
+    max_age = float(thermal_safety["max_feedback_age_sec"])
+    require_after = float(thermal_safety["require_feedback_after_sec"])
+    consecutive_limit = int(thermal_safety["consecutive_over_limit"])
+
+    latest_temps = {}
+    missing = []
+
+    for motor_id in monitor_motor_ids:
+        fb = driver.get_latest_type2_feedback(motor_id, max_age=max_age)
+        if fb is None:
+            missing.append(motor_id)
+            continue
+
+        temp_c = float(fb.temperature)
+        latest_temps[motor_id] = temp_c
+
+        if temp_c >= stop_temp_c:
+            over_count[motor_id] = int(over_count.get(motor_id, 0)) + 1
+        else:
+            over_count[motor_id] = 0
+
+        if over_count[motor_id] >= consecutive_limit:
+            raise RuntimeError(
+                f"THERMAL SAFETY STOP: Joint{motor_id} temperature {temp_c:.1f} C "
+                f">= stop_temp_c {stop_temp_c:.1f} C "
+                f"for {over_count[motor_id]} consecutive check(s)"
+            )
+
+    if missing and mode_elapsed >= require_after:
+        missing_text = ", ".join([f"Joint{mid}" for mid in missing])
+        raise RuntimeError(
+            f"THERMAL SAFETY STOP: missing fresh Type2 temperature feedback for "
+            f"{missing_text} after {mode_elapsed:.2f} s; max_feedback_age_sec={max_age:.2f}"
+        )
+
+    return latest_temps
+
+
 def read_arm_positions_fast(driver: SukineeSocketCANDriver, timeout: float):
     motor_pos_map: Dict[int, float] = {}
     for motor_id in ARM_JOINT_IDS:
@@ -914,6 +990,14 @@ def main():
         print(f"  joint4_angle_dependent_gravity_scale.scale_at_start = {j4s['scale_at_start']:.3f}")
         print(f"  joint4_angle_dependent_gravity_scale.scale_at_full = {j4s['scale_at_full']:.3f}")
         print(f"  joint4_angle_dependent_gravity_scale.blend = {j4s['blend']}")
+    ts = cfg["thermal_safety"]
+    print(f"  thermal_safety.enabled = {ts['enabled']}")
+    if ts["enabled"]:
+        print(f"  thermal_safety.monitor_motor_ids = {ts['monitor_motor_ids']}")
+        print(f"  thermal_safety.stop_temp_c = {ts['stop_temp_c']:.1f} C")
+        print(f"  thermal_safety.max_feedback_age_sec = {ts['max_feedback_age_sec']:.3f} s")
+        print(f"  thermal_safety.require_feedback_after_sec = {ts['require_feedback_after_sec']:.3f} s")
+        print(f"  thermal_safety.consecutive_over_limit = {ts['consecutive_over_limit']}")
     print("  Per-joint config shown for terminal monitor joints only:")
     for motor_id in [mid for mid in MONITOR_JOINT_IDS if mid in target_joints]:
         sd = cfg["software_damping"]
@@ -1048,6 +1132,8 @@ def main():
         max_abs_damping_seen = {mid: 0.0 for mid in target_joints}
         max_abs_joint2_anti_j3_hold_seen = 0.0
         q2_hold_ref = None
+        thermal_over_count = {mid: 0 for mid in cfg["thermal_safety"].get("monitor_motor_ids", [])}
+        latest_thermal_temps = {}
 
         while True:
             cycle_start = time.monotonic()
@@ -1149,6 +1235,13 @@ def main():
             if not ok:
                 raise RuntimeError(f"Torque limit exceeded during mode: {reason}")
 
+            latest_thermal_temps = check_thermal_safety(
+                driver=driver,
+                thermal_safety=cfg["thermal_safety"],
+                mode_elapsed=cycle_start - loop_start_time,
+                over_count=thermal_over_count,
+            )
+
             send_type1_targets(
                 driver=driver,
                 target_joints=target_joints,
@@ -1170,12 +1263,21 @@ def main():
                 torque_text = " ".join(
                     [f"tau{mid}={torque_motor[mid]:+.3f}Nm" for mid in monitor_joints]
                 )
+                thermal_text = ""
+                if cfg["thermal_safety"].get("enabled", False):
+                    thermal_parts = [
+                        f"T{mid}={latest_thermal_temps[mid]:.1f}C"
+                        for mid in cfg["thermal_safety"].get("monitor_motor_ids", [])
+                        if mid in latest_thermal_temps
+                    ]
+                    thermal_text = " | " + (" ".join(thermal_parts) if thermal_parts else "temp=waiting")
                 print(
                     f"cycle={cycle:05d} "
                     f"dt={elapsed*1000.0:.2f}ms "
                     f"alpha={ramp_alpha:.3f} | "
                     f"{q_text} | "
                     f"{torque_text}"
+                    f"{thermal_text}"
                 )
 
             cycle += 1
