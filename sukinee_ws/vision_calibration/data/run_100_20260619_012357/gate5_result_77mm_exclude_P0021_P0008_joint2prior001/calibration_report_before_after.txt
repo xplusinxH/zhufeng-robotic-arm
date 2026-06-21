@@ -1,0 +1,69 @@
+Sukinee Gate5 calibration report
+================================
+created_at_utc: 2026-06-19T08:07:23.543+00:00
+sample_count: 98
+excluded_sample_ids: ['P0021', 'P0008']
+joint_delta_sigma: {'Joint2': 0.01}
+delta_prior_enabled: True
+vision_translation_scale: 0.9625
+configured_tag_size_m: 0.08
+measured_tag_size_m: 0.077
+cached_weight: 0.5
+mixed_weight: 0.7
+
+Optimization
+------------
+extrinsics_only_initial_seed_selected: base_from_tool_identity
+extrinsics_only_success: True
+extrinsics_only_cost: 37.8644441838
+full_success: True
+full_cost: 18.8848625897
+full_message: `ftol` termination condition is satisfied.
+
+Delta q result
+--------------
+Joint1: delta_q_rad= 0.0142661306332, zero_old= 4.67674757044, zero_new= 4.66248143981, delta_prior_sigma=None
+Joint2: delta_q_rad= 0.00724793129637, zero_old= 6.03913600525, zero_new= 6.04638393655, delta_prior_sigma=0.01, delta_prior_residual=0.724793129637
+Joint3: delta_q_rad= 0.0112910217965, zero_old= 2.25831320952, zero_new= 2.24702218772, delta_prior_sigma=None
+Joint4: delta_q_rad= 0.066483887415, zero_old= 1.08109671997, zero_new= 1.01461283256, delta_prior_sigma=None
+Joint5: delta_q_rad= 0.0175139109585, zero_old= 3.01902270317, zero_new= 3.00150879221, delta_prior_sigma=None
+Joint6: delta_q_rad= 0.0224633795968, zero_old= 2.90309789291, zero_new= 2.88063451332, delta_prior_sigma=None
+
+Before/after residual stats
+---------------------------
+[cached_base_ref]
+  before.translation_m: {'count': 23, 'rmse': 0.008126079237848714, 'median': 0.005995854407714652, 'p90': 0.011924845843193468, 'max': 0.014524647131377631}
+  after.translation_m : {'count': 23, 'rmse': 0.003987707016421568, 'median': 0.00363836897051193, 'p90': 0.00530950878805466, 'max': 0.007255116804084952}
+  before.rotation_rad : {'count': 23, 'rmse': 0.0552472683525404, 'median': 0.038100064728255875, 'p90': 0.07982976176051858, 'max': 0.13693190518318873}
+  after.rotation_rad  : {'count': 23, 'rmse': 0.03285745888881717, 'median': 0.021421165727824005, 'p90': 0.04090845276857827, 'max': 0.09627780499800806}
+[overall]
+  before.translation_m: {'count': 98, 'rmse': 0.006407487788279049, 'median': 0.005045680432215387, 'p90': 0.009724290219917543, 'max': 0.014524647131377631}
+  after.translation_m : {'count': 98, 'rmse': 0.003949502157228374, 'median': 0.003117511161643481, 'p90': 0.005688237595945354, 'max': 0.011468534166397454}
+  before.rotation_rad : {'count': 98, 'rmse': 0.041040815700439784, 'median': 0.028865392640629775, 'p90': 0.06440712008763265, 'max': 0.13693190518318873}
+  after.rotation_rad  : {'count': 98, 'rmse': 0.028832389765462797, 'median': 0.018543932942364623, 'p90': 0.03954880576032669, 'max': 0.09627780499800806}
+[same_frame]
+  before.translation_m: {'count': 75, 'rmse': 0.005778945012422616, 'median': 0.004622422124712973, 'p90': 0.009166437129045874, 'max': 0.013863079853626592}
+  after.translation_m : {'count': 75, 'rmse': 0.003937711734315494, 'median': 0.0028806889609831418, 'p90': 0.005948603060253863, 'max': 0.011468534166397454}
+  before.rotation_rad : {'count': 75, 'rmse': 0.035564807144034295, 'median': 0.026905510178154454, 'p90': 0.05043288148578423, 'max': 0.10924844517154561}
+  after.rotation_rad  : {'count': 75, 'rmse': 0.027480166581999733, 'median': 0.017498684815984024, 'p90': 0.03820186045244127, 'max': 0.08061271176610611}
+
+Largest after-translation residual samples
+------------------------------------------
+P0097: source=same_frame, after_translation_m=0.0114685341664, after_rotation_rad=0.0753404811509
+P0018: source=same_frame, after_translation_m=0.0110663401686, after_rotation_rad=0.0300140864283
+P0005: source=same_frame, after_translation_m=0.00827028088768, after_rotation_rad=0.0141319454579
+P0014: source=same_frame, after_translation_m=0.00727260607648, after_rotation_rad=0.0369216915905
+P0096: source=cached_base_ref, after_translation_m=0.00725511680408, after_rotation_rad=0.0421312015975
+P0043: source=cached_base_ref, after_translation_m=0.00705698966629, after_rotation_rad=0.0398047924669
+P0007: source=same_frame, after_translation_m=0.00675556573497, after_rotation_rad=0.0296440232794
+P0012: source=same_frame, after_translation_m=0.00645884308335, after_rotation_rad=0.0266123527229
+P0020: source=same_frame, after_translation_m=0.0064113503385, after_rotation_rad=0.035516539732
+P0049: source=same_frame, after_translation_m=0.00629937537304, after_rotation_rad=0.0806127117661
+
+Safety boundary
+---------------
+software_only: true
+type6_set_zero: false
+save_motor_parameters: false
+moveit_real_execution: false
+can0_required: false

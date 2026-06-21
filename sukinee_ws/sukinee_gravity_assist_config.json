@@ -3,7 +3,7 @@
   "gravity_feedforward_ratio": 1,
   "gravity_joint_scale": {
     "2": 0.9,
-    "3": 1.1,
+    "3": 1.15,
     "4": 1.27,
     "5": 1.0,
     "6": 1.0
@@ -20,11 +20,11 @@
     "damping": {
       "2": 0.25,
       "3": 0.25,
-      "4": 0.10,
+      "4": 0.1,
       "5": 0.05,
       "6": 0.05
     },
-    "qdot_filter_alpha": 0.60,
+    "qdot_filter_alpha": 0.6,
     "max_abs_qdot": 30.0,
     "max_abs_damping_torque": {
       "2": 0.25,
@@ -34,7 +34,13 @@
       "6": 0.05
     }
   },
-  "target_joints": [2, 3, 4, 5 ,6],
+  "target_joints": [
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
   "control_rate_hz": 100.0,
   "startup_ramp_sec": 2.0,
   "torque_slew_rate": {
@@ -46,41 +52,54 @@
   },
   "max_abs_torque": {
     "2": 7.0,
-    "3": 6.0,
+    "3": 7.0,
     "4": 1.6,
     "5": 1,
-    "6": 1
+    "6": 1,
+    "1": 3.0
   },
   "joint2_clockwise_drift_compensation": {
-  "enabled": false,
-  "q_start_rad": 1.0,
-  "q_full_rad": 1.4,
-  "torque_at_full": 1.5,
-  "max_abs_comp_torque": 1.5
+    "enabled": false,
+    "q_start_rad": 1.0,
+    "q_full_rad": 1.4,
+    "torque_at_full": 1.5,
+    "max_abs_comp_torque": 1.5
   },
   "joint2_anti_j3_coupling_hold": {
-  "enabled": true,
-  "q2_hold_mode": "capture_at_start",
-  "j3_abs_torque_start": 2,
-  "j3_abs_torque_full": 4,
-  "kp": 0.7,
-  "kd": 0.35,
-  "max_abs_hold_torque": 3
+    "enabled": true,
+    "q2_hold_mode": "capture_at_start",
+    "j3_abs_torque_start": 2,
+    "j3_abs_torque_full": 4,
+    "kp": 0.7,
+    "kd": 0.35,
+    "max_abs_hold_torque": 3
   },
-"joint2_angle_dependent_gravity_scale": {
-  "enabled": false,
-  "q_start_rad": 0.75,
-  "q_full_rad": 1.1,
-  "scale_at_start": 0.9,
-  "scale_at_full": 1.3,
-  "blend": "smoothstep"
+  "joint2_angle_dependent_gravity_scale": {
+    "enabled": false,
+    "q_start_rad": 0.75,
+    "q_full_rad": 1.1,
+    "scale_at_start": 0.9,
+    "scale_at_full": 1.3,
+    "blend": "smoothstep"
   },
   "joint4_angle_dependent_gravity_scale": {
-  "enabled": true,
-  "q_start_rad": 0.15,
-  "q_full_rad": 0.6,
-  "scale_at_start": 1.27,
-  "scale_at_full": 0.95,
-  "blend": "smoothstep"
-}
+    "enabled": true,
+    "q_start_rad": 0.15,
+    "q_full_rad": 0.6,
+    "scale_at_start": 1.27,
+    "scale_at_full": 1.05,
+    "blend": "smoothstep"
+  },
+  "thermal_safety": {
+    "enabled": true,
+    "monitor_motor_ids": [
+      2,
+      3,
+      4
+    ],
+    "stop_temp_c": 110.0,
+    "max_feedback_age_sec": 0.5,
+    "require_feedback_after_sec": 3.0,
+    "consecutive_over_limit": 1
+  }
 }
