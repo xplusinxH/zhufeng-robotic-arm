@@ -115,3 +115,85 @@ python3 tools/capture_eye_in_hand_debug.py \
 ```
 
 注意：`tool_camera.example.yaml` 只是占位示例，不是真实手眼标定结果；正式联调前必须替换为实测 `tool_camera.yaml`。
+
+## 2026-06-21 串口协议改写
+
+已确认旧版只发送几何中心的协议不足以支持真实抓取，因为几何中心不能描述不规则物体的可抓取区域。
+
+当前协议调整为：
+
+1. `@OBJ`：发送物体候选摘要，包括候选中心、图像 ROI、点数和来源。
+2. `@GRASP`：发送抓取建议，包括抓取点、抓取姿态、夹爪开口、质量评分和接近方式。
+3. `@NOOBJ#`：没有候选物。
+4. `@ERR,code,message#`：视觉端异常。
+5. `@END,count#`：多帧输出结束。
+
+重要约定：
+
+- `bbox_pixel` 只是图像 ROI，不代表物体形状。
+- `OBJ` 帧只告诉控制端“哪里有候选物”。
+- `GRASP` 帧才是控制端优先执行的抓取目标。
+- 旧版 `@TARGET` 暂时保留为早期调试兼容接口，不作为正式抓取协议。
+
+## 2026-06-21 相机视野优先约束
+
+根据当前机械结构图，D435 相机安装在夹爪上方。抓取过程中夹爪、被抓物体或末端结构可能遮挡相机视线，因此后续抓取逻辑必须优先保证相机视角不被遮挡。
+
+新增约束：
+
+1. 抓取候选必须先通过相机视野安全检查。
+2. 会在预抓取阶段遮挡目标 ROI 的候选应直接拒绝。
+3. 夹爪闭合前应尽量保持目标在相机视野中，便于最后一次定位确认。
+4. `@GRASP` 协议新增 `visibility` 字段，表示相机视野安全评分。
+5. 后续抓取评分必须把 `visibility_score` 作为优先级高于几何中心距离的因素。
+
+更新后的抓取建议协议：
+
+```text
+@GRASP,id,x_mm,y_mm,z_mm,qx,qy,qz,qw,width_mm,quality,visibility,approach#
+```
+
+## 2026-06-21 第一版视野优先抓取建议生成
+
+新增 `perception/grasp_planner.py`，把“相机视野优先”从协议字段推进为可测试的抓取候选筛选逻辑。
+
+当前实现：
+
+1. 使用 `camera_keepout_roi` 表示夹爪容易遮挡相机视野的图像区域。
+2. 使用候选物 `bbox_pixel` 与 `camera_keepout_roi` 的重叠比例估算 `visibility`。
+3. `visibility` 低于阈值时，不生成 `GRASP`。
+4. `visibility` 达标时，生成第一版保守抓取建议，并把 `visibility` 写入抓取字典。
+
+当前版本是启发式，不是最终抓取规划器。后续需要结合：
+
+- 夹爪 CAD 投影
+- 相机内参和 `T_tool_camera`
+- 预抓取路径
+- 点云法向和物体局部几何
+- 夹爪开口与碰撞余量
+
+把二维 ROI 视野评分升级为三维遮挡检测。
+
+## 2026-06-21 单帧调试输出抓取建议
+
+已将 `perception/grasp_planner.py` 接入离线和真实相机单帧调试脚本：
+
+1. `tools/offline_eye_in_hand_debug.py`
+2. `tools/capture_eye_in_hand_debug.py`
+
+调试结果 JSON 现在不仅包含 `candidates`，还包含：
+
+```text
+grasp_count
+rejected_grasp_count
+grasps
+```
+
+新增 CLI 参数：
+
+```text
+--camera-keepout-roi u1,v1,u2,v2
+--min-visibility 0.60
+```
+
+现场调试时可以先根据画面手动设置 `camera_keepout_roi`。当候选物 ROI 与该禁区重叠过多时，系统会保留候选物 `OBJ`，但不会生成 `GRASP`，从而避免控制端执行会遮挡相机的抓取动作。

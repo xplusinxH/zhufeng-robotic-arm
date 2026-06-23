@@ -18,7 +18,16 @@ if __package__ in (None, ""):
 from calibration.tool_camera_io import load_tool_camera_record
 from communication.pose_source import load_base_tool_pose_from_file
 from coordinate.frame_transform import compose_transform
-from perception.object_fusion import build_base_height_object_candidates
+from perception.grasp_planner import build_visibility_aware_grasps
+from perception.object_fusion import (
+    build_base_height_object_candidates,
+    build_depth_foreground_object_candidates,
+    build_table_plane_object_candidates,
+)
+from perception.table_plane import (
+    apply_table_z_compensation_to_scene,
+    estimate_table_plane_diagnostics,
+)
 
 
 def build_offline_eye_in_hand_result(
@@ -31,25 +40,72 @@ def build_offline_eye_in_hand_result(
     stride=1,
     min_z_base_m=0.01,
     max_z_base_m=0.30,
+    image_size=None,
+    camera_keepout_roi=None,
+    min_visibility=0.60,
+    segmentation_mode="table_plane",
+    enable_table_z_compensation=False,
+    table_plane_stride=None,
+    table_plane_min_points=80,
 ):
     """用模拟位姿跑通一次 eye-in-hand 候选物生成流程。"""
 
     base_from_camera = compose_transform(base_from_tool, tool_from_camera)
-    candidates = build_base_height_object_candidates(
+    table_plane = estimate_table_plane_diagnostics(
         depth_m=depth_m,
         intrinsics=intrinsics,
         base_from_camera=base_from_camera,
-        min_points=min_points,
-        pixel_radius=pixel_radius,
-        stride=stride,
-        min_z_base_m=min_z_base_m,
-        max_z_base_m=max_z_base_m,
+        stride=table_plane_stride or max(1, int(stride)),
+        min_points=table_plane_min_points,
     )
+    if segmentation_mode == "table_plane":
+        candidates = build_table_plane_object_candidates(
+            depth_m=depth_m,
+            intrinsics=intrinsics,
+            base_from_camera=base_from_camera,
+            min_points=min_points,
+            pixel_radius=pixel_radius,
+            stride=stride,
+            table_plane_min_points=table_plane_min_points,
+        )
+    elif segmentation_mode == "depth_foreground":
+        candidates = build_depth_foreground_object_candidates(
+            depth_m=depth_m,
+            intrinsics=intrinsics,
+            base_from_camera=base_from_camera,
+            min_points=min_points,
+            pixel_radius=pixel_radius,
+            stride=stride,
+        )
+    else:
+        candidates = build_base_height_object_candidates(
+            depth_m=depth_m,
+            intrinsics=intrinsics,
+            base_from_camera=base_from_camera,
+            min_points=min_points,
+            pixel_radius=pixel_radius,
+            stride=stride,
+            min_z_base_m=min_z_base_m,
+            max_z_base_m=max_z_base_m,
+        )
+    grasps = build_visibility_aware_grasps(
+        candidates,
+        image_size=image_size or _infer_image_size(depth_m),
+        camera_keepout_roi=camera_keepout_roi,
+        min_visibility=min_visibility,
+    )
+    if enable_table_z_compensation:
+        apply_table_z_compensation_to_scene(candidates, grasps, table_plane)
     return {
         "frame": "base",
         "base_from_camera": base_from_camera,
+        "table_plane": table_plane,
+        "table_z_compensation_enabled": bool(enable_table_z_compensation),
         "candidate_count": len(candidates),
         "candidates": candidates,
+        "grasp_count": len(grasps),
+        "rejected_grasp_count": len(candidates) - len(grasps),
+        "grasps": grasps,
     }
 
 
@@ -99,6 +155,25 @@ def save_offline_result(result, output_path):
     )
 
 
+def parse_roi(value):
+    """解析 ``u1,v1,u2,v2`` 格式的 ROI 参数。"""
+
+    if value is None:
+        return None
+    parts = [part.strip() for part in str(value).split(",")]
+    if len(parts) != 4:
+        raise ValueError("ROI 必须使用 u1,v1,u2,v2 格式")
+    return tuple(int(part) for part in parts)
+
+
+def _infer_image_size(depth_m):
+    """从深度矩阵推断图像尺寸。"""
+
+    if not depth_m:
+        return (0, 0)
+    return (len(depth_m[0]), len(depth_m))
+
+
 def main(argv=None):
     """命令行入口。"""
 
@@ -113,12 +188,20 @@ def main(argv=None):
     parser.add_argument("--stride", type=int, default=1, help="深度图采样步长")
     parser.add_argument("--min-z-base", type=float, default=0.01, help="基坐标系最小高度，单位米")
     parser.add_argument("--max-z-base", type=float, default=0.30, help="基坐标系最大高度，单位米")
+    parser.add_argument("--camera-keepout-roi", help="相机视野禁区 ROI，格式 u1,v1,u2,v2")
+    parser.add_argument("--min-visibility", type=float, default=0.60, help="生成 GRASP 的最小视野评分")
+    parser.add_argument(
+        "--table-z-compensation",
+        action="store_true",
+        help="使用拟合桌面平面对候选物和 GRASP 的 Z_base 做临时补偿",
+    )
     args = parser.parse_args(argv)
 
+    depth_m = load_depth_matrix(args.depth_json)
     tool_camera = load_tool_camera_record(args.tool_camera)
     base_tool_pose = load_base_tool_pose_from_file(args.base_tool_pose)
     result = build_offline_eye_in_hand_result(
-        depth_m=load_depth_matrix(args.depth_json),
+        depth_m=depth_m,
         intrinsics=load_intrinsics(args.intrinsics_json),
         base_from_tool=base_tool_pose["transform"],
         tool_from_camera=tool_camera["transform"],
@@ -127,6 +210,10 @@ def main(argv=None):
         stride=args.stride,
         min_z_base_m=args.min_z_base,
         max_z_base_m=args.max_z_base,
+        image_size=_infer_image_size(depth_m),
+        camera_keepout_roi=parse_roi(args.camera_keepout_roi),
+        min_visibility=args.min_visibility,
+        enable_table_z_compensation=args.table_z_compensation,
     )
     save_offline_result(result, args.output_json)
     print("离线 eye-in-hand 调试结果已保存到：{}".format(args.output_json))
