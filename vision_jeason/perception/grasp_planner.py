@@ -35,6 +35,7 @@ def build_visibility_aware_grasp(
     camera_keepout_roi=None,
     min_visibility=0.60,
     width_margin_m=0.01,
+    gripper_max_opening_m=None,
 ):
     """从候选物生成第一版视野安全抓取建议。
 
@@ -55,6 +56,9 @@ def build_visibility_aware_grasp(
     size_m = _as_float_tuple(candidate.get("size_m", (0.0, 0.0, 0.0)), 3)
     shape_3d = _shape_3d_from_candidate(candidate, size_m)
     width_m = shape_3d["minor_axis_m"] + float(width_margin_m)
+    gripper_fit = _build_gripper_fit(width_m, gripper_max_opening_m)
+    if not gripper_fit["fits"]:
+        return None
     base_quality = _clamp01(candidate.get("score", 1.0))
     quality = base_quality * visibility
     return {
@@ -68,6 +72,7 @@ def build_visibility_aware_grasp(
         "object_major_axis_m": shape_3d["major_axis_m"],
         "object_minor_axis_m": shape_3d["minor_axis_m"],
         "object_height_m": shape_3d["height_m"],
+        "gripper_fit": gripper_fit,
     }
 
 
@@ -77,6 +82,7 @@ def build_visibility_aware_grasps(
     camera_keepout_roi=None,
     min_visibility=0.60,
     width_margin_m=0.01,
+    gripper_max_opening_m=None,
 ):
     """批量生成抓取建议，并按综合质量从高到低排序。"""
 
@@ -88,6 +94,7 @@ def build_visibility_aware_grasps(
             camera_keepout_roi=camera_keepout_roi,
             min_visibility=min_visibility,
             width_margin_m=width_margin_m,
+            gripper_max_opening_m=gripper_max_opening_m,
         )
         if grasp is not None:
             grasps.append(grasp)
@@ -140,6 +147,27 @@ def _shape_3d_from_candidate(candidate, size_m):
         "major_axis_m": major_axis_m,
         "minor_axis_m": minor_axis_m,
         "height_m": height_m,
+    }
+
+
+def _build_gripper_fit(required_opening_m, gripper_max_opening_m):
+    """根据夹爪最大开合量判断当前候选抓取是否可执行。"""
+
+    required_opening_m = float(required_opening_m)
+    if gripper_max_opening_m is None:
+        return {
+            "max_opening_m": None,
+            "required_opening_m": required_opening_m,
+            "fits": True,
+            "margin_m": None,
+        }
+    max_opening_m = float(gripper_max_opening_m)
+    margin_m = max_opening_m - required_opening_m
+    return {
+        "max_opening_m": max_opening_m,
+        "required_opening_m": required_opening_m,
+        "fits": margin_m >= 0.0,
+        "margin_m": margin_m,
     }
 
 

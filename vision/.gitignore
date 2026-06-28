@@ -1,4 +1,11 @@
 .venv/
+.sam2_venv/
+.labelimg_venv/
+.yolo_venv/
+.ultralytics/
+.local_data/
+models/*.pt
+models/.cache/
 __pycache__/
 *.py[cod]
 .pytest_cache/

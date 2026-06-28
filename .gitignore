@@ -15,6 +15,7 @@ __pycache__/
 
 # Runtime logs
 *.log
+runs/
 
 # Prompt / private conversation files
 *prompt*

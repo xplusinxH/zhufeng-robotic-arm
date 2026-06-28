@@ -47,6 +47,7 @@ def build_offline_eye_in_hand_result(
     enable_table_z_compensation=False,
     table_plane_stride=None,
     table_plane_min_points=80,
+    gripper_max_opening_m=None,
 ):
     """用模拟位姿跑通一次 eye-in-hand 候选物生成流程。"""
 
@@ -93,6 +94,7 @@ def build_offline_eye_in_hand_result(
         image_size=image_size or _infer_image_size(depth_m),
         camera_keepout_roi=camera_keepout_roi,
         min_visibility=min_visibility,
+        gripper_max_opening_m=gripper_max_opening_m,
     )
     if enable_table_z_compensation:
         apply_table_z_compensation_to_scene(candidates, grasps, table_plane)
@@ -101,6 +103,7 @@ def build_offline_eye_in_hand_result(
         "base_from_camera": base_from_camera,
         "table_plane": table_plane,
         "table_z_compensation_enabled": bool(enable_table_z_compensation),
+        "gripper_max_opening_m": gripper_max_opening_m,
         "candidate_count": len(candidates),
         "candidates": candidates,
         "grasp_count": len(grasps),

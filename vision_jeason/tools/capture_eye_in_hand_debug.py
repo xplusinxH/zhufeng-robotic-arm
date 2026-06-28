@@ -27,6 +27,7 @@ from tools.eye_in_hand_debug_view import (
 from tools.offline_eye_in_hand_debug import build_offline_eye_in_hand_result, parse_roi
 
 DEFAULT_OUTPUT_ROOT = Path("/mnt/zhufeng_data/data/eye_in_hand_debug")
+DEFAULT_GRIPPER_MAX_OPENING_M = 0.08
 
 
 def capture_eye_in_hand_debug(
@@ -44,6 +45,7 @@ def capture_eye_in_hand_debug(
     min_visibility=0.60,
     segmentation_mode="table_plane",
     enable_table_z_compensation=False,
+    gripper_max_opening_m=DEFAULT_GRIPPER_MAX_OPENING_M,
 ):
     """采集一帧对齐深度，并保存基坐标系候选物调试结果。
 
@@ -71,6 +73,7 @@ def capture_eye_in_hand_debug(
             min_visibility=min_visibility,
             segmentation_mode=segmentation_mode,
             enable_table_z_compensation=enable_table_z_compensation,
+            gripper_max_opening_m=gripper_max_opening_m,
         )
         result["intrinsics"] = intrinsics
         result["depth_size"] = {
@@ -100,6 +103,7 @@ def run_eye_in_hand_live_view(
     min_visibility=0.60,
     segmentation_mode="table_plane",
     enable_table_z_compensation=False,
+    gripper_max_opening_m=DEFAULT_GRIPPER_MAX_OPENING_M,
 ):
     """打开实时调试窗口，优先保证画面流畅显示。
 
@@ -121,6 +125,8 @@ def run_eye_in_hand_live_view(
         print("调试输出目录：{0}".format(output_root))
         latest_result = make_empty_live_result(intrinsics, (camera.width, camera.height))
         latest_overlay = None
+        latest_detection_color_bgr = None
+        latest_detection_depth_m = None
         while True:
             color_frame, depth_frame = camera.capture_aligned()
             color_bgr = np.asanyarray(color_frame.get_data())
@@ -151,6 +157,8 @@ def run_eye_in_hand_live_view(
                     np.asanyarray(depth_frame.get_data()),
                     depth_scale,
                 )
+                latest_detection_color_bgr = color_bgr.copy()
+                latest_detection_depth_m = depth_m
                 latest_result = build_offline_eye_in_hand_result(
                     depth_m=depth_m,
                     intrinsics=intrinsics,
@@ -166,6 +174,7 @@ def run_eye_in_hand_live_view(
                     min_visibility=min_visibility,
                     segmentation_mode=segmentation_mode,
                     enable_table_z_compensation=enable_table_z_compensation,
+                    gripper_max_opening_m=gripper_max_opening_m,
                 )
                 _attach_capture_metadata(latest_result, intrinsics, depth_m)
                 _print_table_plane_diagnostics(latest_result.get("table_plane"))
@@ -183,8 +192,16 @@ def run_eye_in_hand_live_view(
                     latest_result,
                 )
                 latest_result["output_path"] = str(output_path)
+                latest_result["debug_artifacts"] = save_capture_debug_artifacts(
+                    output_path.parent,
+                    overlay_bgr=latest_overlay,
+                    current_color_bgr=color_bgr,
+                    detection_color_bgr=latest_detection_color_bgr,
+                    detection_depth_m=latest_detection_depth_m,
+                    cv2_module=cv2,
+                    np_module=np,
+                )
                 _rewrite_result_with_output_path(output_path, latest_result)
-                cv2.imwrite(str(output_path.parent / "overlay.png"), latest_overlay)
                 print("当前帧调试结果已保存到：{0}".format(output_path.parent))
     finally:
         camera.stop()
@@ -267,6 +284,55 @@ def save_capture_result(output_root, timestamp, result):
     output_path = capture_dir / "eye_in_hand_candidates.json"
     _rewrite_result_with_output_path(output_path, result)
     return output_path
+
+
+def save_capture_debug_artifacts(
+    capture_dir,
+    overlay_bgr,
+    current_color_bgr,
+    detection_color_bgr,
+    detection_depth_m,
+    cv2_module,
+    np_module,
+):
+    """保存漏检复盘需要的原始图像和深度数据。"""
+
+    capture_dir = Path(capture_dir)
+    artifacts = {}
+    if overlay_bgr is not None:
+        overlay_path = capture_dir / "overlay.png"
+        cv2_module.imwrite(str(overlay_path), overlay_bgr)
+        artifacts["overlay_png"] = overlay_path.name
+    color_image = detection_color_bgr if detection_color_bgr is not None else current_color_bgr
+    if color_image is not None:
+        color_path = capture_dir / "color.png"
+        cv2_module.imwrite(str(color_path), color_image)
+        artifacts["color_png"] = color_path.name
+    if detection_depth_m is not None:
+        depth_array = np_module.asarray(detection_depth_m, dtype="float32")
+        depth_path = capture_dir / "depth_m.npy"
+        np_module.save(str(depth_path), depth_array)
+        artifacts["depth_m_npy"] = depth_path.name
+        preview_path = capture_dir / "depth_preview.png"
+        cv2_module.imwrite(str(preview_path), _make_depth_preview(depth_array, np_module))
+        artifacts["depth_preview_png"] = preview_path.name
+    return artifacts
+
+
+def _make_depth_preview(depth_m, np_module):
+    """把米单位深度矩阵转换成 8-bit 预览图，便于直接查看。"""
+
+    valid = depth_m[depth_m > 0.0]
+    if valid.size == 0:
+        return np_module.zeros(depth_m.shape, dtype="uint8")
+    min_depth = float(valid.min())
+    max_depth = float(valid.max())
+    if max_depth <= min_depth:
+        return np_module.zeros(depth_m.shape, dtype="uint8")
+    normalized = (depth_m - min_depth) * (255.0 / (max_depth - min_depth))
+    normalized = np_module.clip(normalized, 0, 255)
+    normalized[depth_m <= 0.0] = 0
+    return normalized.astype("uint8")
 
 
 def _attach_capture_metadata(result, intrinsics, depth_m):

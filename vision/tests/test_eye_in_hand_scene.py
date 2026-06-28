@@ -21,6 +21,7 @@ from perception.object_fusion import (
 )
 from perception.grasp_planner import (
     build_visibility_aware_grasp,
+    build_visibility_aware_grasps,
     estimate_visibility_score,
 )
 from perception.table_plane import estimate_table_plane_diagnostics
@@ -34,6 +35,7 @@ from tools.capture_eye_in_hand_debug import (
     capture_eye_in_hand_debug,
     make_empty_live_result,
     raw_depth_to_depth_m,
+    save_capture_debug_artifacts,
 )
 from tools.eye_in_hand_debug_view import (
     draw_eye_in_hand_debug_overlay,
@@ -113,7 +115,82 @@ class FakeCv2ForEyeInHandView:
         self.texts.append((text, origin, color))
 
 
+class FakeCv2Writer:
+    def __init__(self):
+        self.imwrite_calls = []
+
+    def imwrite(self, path, image):
+        Path(path).write_bytes(b"fake-image")
+        self.imwrite_calls.append(Path(path).name)
+        return True
+
+
 class EyeInHandSceneTests(unittest.TestCase):
+    def test_rejects_grasp_when_required_width_exceeds_gripper_opening(self):
+        candidate = {
+            "id": 3,
+            "bbox_pixel": (10, 10, 60, 40),
+            "center_base_m": (0.1, 0.2, 0.03),
+            "size_m": (0.12, 0.02, 0.02),
+            "shape_3d_m": {
+                "major_axis_m": 0.12,
+                "minor_axis_m": 0.081,
+                "height_m": 0.02,
+            },
+            "score": 1.0,
+        }
+
+        grasp = build_visibility_aware_grasp(
+            candidate,
+            image_size=(160, 120),
+            gripper_max_opening_m=0.08,
+            width_margin_m=0.0,
+        )
+        grasps = build_visibility_aware_grasps(
+            [candidate],
+            image_size=(160, 120),
+            gripper_max_opening_m=0.08,
+            width_margin_m=0.0,
+        )
+
+        self.assertIsNone(grasp)
+        self.assertEqual(grasps, [])
+
+    def test_saves_capture_debug_artifacts_for_later_miss_analysis(self):
+        np = __import__("numpy")
+        fake_cv2 = FakeCv2Writer()
+
+        with tempfile.TemporaryDirectory() as directory:
+            artifacts = save_capture_debug_artifacts(
+                directory,
+                overlay_bgr=[[1]],
+                current_color_bgr=[[2]],
+                detection_color_bgr=[[3]],
+                detection_depth_m=[[0.1, 0.2], [0.0, 0.3]],
+                cv2_module=fake_cv2,
+                np_module=np,
+            )
+            root = Path(directory)
+
+            self.assertTrue((root / "overlay.png").exists())
+            self.assertTrue((root / "color.png").exists())
+            self.assertTrue((root / "depth_m.npy").exists())
+            self.assertTrue((root / "depth_preview.png").exists())
+
+        self.assertEqual(
+            artifacts,
+            {
+                "overlay_png": "overlay.png",
+                "color_png": "color.png",
+                "depth_m_npy": "depth_m.npy",
+                "depth_preview_png": "depth_preview.png",
+            },
+        )
+        self.assertEqual(
+            fake_cv2.imwrite_calls,
+            ["overlay.png", "color.png", "depth_preview.png"],
+        )
+
     def test_loads_tool_camera_yaml_and_builds_transform(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "tool_camera.yaml"
@@ -697,6 +774,8 @@ class EyeInHandSceneTests(unittest.TestCase):
             "perception/grasp_planner.py",
             "perception/table_plane.py",
             "tools/capture_eye_in_hand_debug.py",
+            "tools/auto_annotate_eye_in_hand.py",
+            "tools/evaluate_eye_in_hand_detection.py",
             "tools/eye_in_hand_debug_view.py",
             "tools/offline_eye_in_hand_debug.py",
         ]:
